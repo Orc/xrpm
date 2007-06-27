@@ -12,10 +12,14 @@ clean:
 distclean seppuku: clean
 	rm -f @CONFIGURE_FILES@ @GENERATED_FILES@
 
-install: xrpm makepkg
+install: install.bin install.man
+
+install.bin: xrpm makepkg
 	install -d @prefix@/bin
-	install -d @prefix@/man/man1
 	install -o bin -g bin -m 555 -s -c makepkg xrpm @prefix@/bin
+
+install.man:
+	install -d @prefix@/man/man1
 	install -o man -g man -m 444    -c makepkg.1 @prefix@/man/man1
 
 xrpm.a:	$(LIBOBJ)

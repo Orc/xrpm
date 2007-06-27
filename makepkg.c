@@ -43,7 +43,10 @@ static const char rcsid[] = "Mastodon $Id: makepkg.c,v 1.14 2000/05/21 16:33:42 
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
-#include <malloc.h>
+#include <stdlib.h>
+#if HAVE_MALLOC_H
+#   include <malloc.h>
+#endif
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/utsname.h>
@@ -53,11 +56,11 @@ static const char rcsid[] = "Mastodon $Id: makepkg.c,v 1.14 2000/05/21 16:33:42 
 #include <stdarg.h>
 
 #if HAVE_ERRNO_H
-#include <errno.h>
+#   include <errno.h>
 #endif
 
 #if HAVE_X_GETOPT
-#include <basis/options.h>
+#   include <basis/options.h>
 #endif
 
 #include "makepkg.h"
@@ -560,12 +563,12 @@ makeheader(struct info *info)
     hdr.minor = 0;
     hdr.type  = 0;
     for (x = 0; x < nrosmap; x++)
-	if (strcmp(info->os, osmap[x].name) == 0) {
+	if (strcasecmp(info->os, osmap[x].name) == 0) {
 	    os = osmap[x].number;
 	    break;
 	}
     for (x = 0; x < nrarchmap; x++)
-	if (strcmp(info->arch, archmap[x].name) == 0) {
+	if (strcasecmp(info->arch, archmap[x].name) == 0) {
 	    arch = archmap[x].number;
 	    break;
 	}
@@ -823,7 +826,6 @@ showmaps(struct mapping *map, int nrmap, char* desc)
 /*
  * makepkg, in mortal flesh
  */
-void /*smooooch!*/
 main(int argc, char **argv)
 {
     struct info info;

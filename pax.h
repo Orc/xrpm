@@ -225,11 +225,18 @@ typedef struct oplist {
  * General Macros
  */
 #ifndef MIN
-#define        MIN(a,b) (((a)<(b))?(a):(b))
+#   define        MIN(a,b) (((a)<(b))?(a):(b))
 #endif
-/*#define MAJOR(x)	major(x)*/
-/*#define MINOR(x)	minor(x)*/
-/*#define TODEV(x, y)	makedev((x), (y))*/
+
+extern long cur_archive_pos;
+
+#if OS_LINUX
+#   include "linux/kdev_t.h"	/* for MAJOR() and MINOR() */
+#else
+#   define MAJOR(x)	major(x)
+#   define MINOR(x)	minor(x)
+#   define TODEV(x, y)	makedev((x), (y))
+#endif
 
 /*
  * General Defines

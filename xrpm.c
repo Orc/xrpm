@@ -43,10 +43,13 @@ static const char rcsid[] = "Mastodon $Id: xrpm.c,v 1.11 2000/07/31 19:20:17 orc
 #include <stdio.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <malloc.h>
+#include <stdlib.h>
+#if HAVE_MALLOC_H
+#   include <malloc.h>
+#endif
 
 #if HAVE_X_GETOPT
-#include <basis/options.h>
+#   include <basis/options.h>
 #endif
 
 #include "xrpm.h"
@@ -383,7 +386,6 @@ struct x_option options[] = {
 /*
  * xrpm, in mortal flesh
  */
-void
 main(int argc, char ** argv)
 {
     struct rpm_header hdr;

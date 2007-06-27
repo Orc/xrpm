@@ -60,8 +60,6 @@ static const char rcsid[] = "$Id: cpio_wr.c,v 1.2 1998/05/21 07:40:55 orc Exp $"
 #include "cpio_wr.h"
 #include "makepkg.h"
 
-#include "linux/kdev_t.h"	/* for MAJOR() and MINOR() */
-
 long cur_archive_pos = 0;
 
 /*

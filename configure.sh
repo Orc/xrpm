@@ -14,6 +14,7 @@ if AC_CHECK_HEADERS basis/options.h; then
     fi
 fi
 AC_CHECK_HEADERS errno.h
+test "$OS_FREEBSD" || AC_CHECK_HEADERS malloc.h
 AC_CHECK_FUNCS	tell
 
 AC_CHECK_FIELD utsname domainname sys/utsname.h
