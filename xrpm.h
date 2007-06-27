@@ -44,20 +44,19 @@
  *  probably not work with any other version of rpm.
  */
 #define MAJOR		2
-#define MAGIC		0xDBEEABED
+#define MAGIC		(DWORD)0xDBEEABED
 
-#define SIGHDR_MAGIC	0x01E8AD8E
+#define SIGHDR_MAGIC	(DWORD)0x01E8AD8E
 
 struct rpm_header {
-    unsigned long magic;
-    /*unsigned char magic[4];*/
-    unsigned char major, minor;
-    short type;
-    short archnum;
-    char name[66];
-    short osnum;
-    short signature_type;
-    char reserved[16];
+    DWORD magic;
+    BYTE major, minor;
+    WORD type;
+    WORD archnum;
+    BYTE name[66];
+    WORD osnum;
+    WORD signature_type;
+    BYTE reserved[16];
 };
 
 
@@ -86,12 +85,12 @@ struct rpm_header {
  * source.
  */
 struct rpm_super {
-    unsigned long nritems;	/* number of rpm_info items */
-    unsigned long size;		/* size of the data. */
+    DWORD nritems;	/* number of rpm_info items */
+    DWORD size;		/* size of the data. */
 } ;
 
 struct rpm_info {
-    long tag;			/* what this info describes (not officially
+    DWORD tag;			/* what this info describes (not officially
 				 * published -- this list is from rpm 2.2.6) */
 
 #define RPMTAG_NAME  			1000
@@ -160,7 +159,7 @@ struct rpm_info {
 #define RPMTAG_AUTOREQPROV              1063 /* used internally by builds */
 #define RPMTAG_RPMVERSION		1064
 
-    long type;			/* data type, from the list below */
+    DWORD type;			/* data type, from the list below */
 
 #define RI_NULL		0
 #define RI_CHAR		1
@@ -171,9 +170,10 @@ struct rpm_info {
 #define RI_STRING	6
 #define RI_BINARY	7
 #define RI_STRINGARRAY	8
+#define RI_STRING_INTL	9
 
-    long offset;		/* offset of the data in the data segment */
-    long count;			/* how many items can be found in the data segment */
+    DWORD offset;		/* offset of the data in the data segment */
+    DWORD count;			/* how many items can be found in the data segment */
 } ;
 
 
@@ -186,7 +186,7 @@ struct rpm_info {
 struct rpm_info_header {
     struct rpm_super super;
     struct rpm_info* ino;
-    unsigned char *data;
+    BYTE*            data;
 } ;
 
 

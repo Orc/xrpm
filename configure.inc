@@ -331,7 +331,18 @@ EOF
 
     TLOGN "checking the C compiler"
 
-    AC_CC=${CC:-`acLookFor cc`}
+    if [ "$CC" ] ; then
+	AC_CC="$CC"
+    elif [ "$WITH_PATH" ]; then
+	AC_CC=`acLookFor cc`
+    elif [ "`acLookFor cc`" ]; then
+	# don't specify the full path if the user is looking in their $PATH
+	# for a C compiler.
+	AC_CC=cc
+    fi
+
+    # check for POSIX c89
+    test "$AC_CC" || AC_CC=`acLookFor c89`
 
     if [ ! "$AC_CC" ]; then
 	TLOG " (no C compiler found)"
@@ -372,11 +383,8 @@ EOF
 	else
 	    AC_LDFLAGS=${CFLAGS:-"-g"}
 	fi
-	AC_SUB 'CFLAGS' "$AC_CFLAGS"
-	AC_SUB 'LDFLAGS' "$AC_LDFLAGS"
     else
-	AC_SUB 'CFLAGS' ''
-	AC_SUB 'LDFLAGS' ''
+	unset AC_CFLAGS AC_LDFLAGS
 	AC_FAIL " does not compile code properly"
     fi
 
@@ -738,10 +746,57 @@ EOF
 
 
 #
+# AC_SCALAR_TYPES checks to see if the compiler can generate 2 and 4 byte ints.
+#
+AC_SCALAR_TYPES () {
+    cat > /tmp/pd$$.c << EOF
+#include <stdio.h>
+main()
+{
+    unsigned long v_long;
+    unsigned int v_int;
+    unsigned short v_short;
+
+    if (sizeof v_long == 4)
+	puts("#define DWORD	unsigned long");
+    else if (sizeof v_int == 4)
+	puts("#define DWORD	unsigned int");
+    else
+	exit(1);
+
+    if (sizeof v_int == 2)
+	puts("#define WORD	unsigned int");
+    else if (sizeof v_short == 2)
+	puts("#define WORD	unsigned short");
+    else
+	exit(2);
+    puts("#define BYTE	unsigned char");
+    exit(0);
+}
+EOF
+    rc=1
+    LOGN "defining WORD & DWORD scalar types"
+    if $AC_CC /tmp/pd$$.c -o /tmp/pd$$; then
+	if /tmp/pd$$  >> $__cwd/config.h; then
+	    rc=0
+	fi
+    fi
+    case "$rc" in
+    0) TLOG "" ;;
+    *) TLOG " ** FAILED **" ;;
+    esac
+    rm -f /tmp/pd$$ /tmp/pd$$.c
+    return $rc
+}
+
+
+#
 # AC_OUTPUT generates makefiles from makefile.in's
 #
 AC_OUTPUT () {
     cd $__cwd
+    AC_SUB 'CFLAGS' "$AC_CFLAGS"
+    AC_SUB 'LDFLAGS' "$AC_LDFLAGS"
     AC_SUB 'LIBS' "$AC_LIBS"
     AC_SUB 'CONFIGURE_FILES' "$__config_files"
     AC_SUB 'GENERATED_FILES' "$*"
@@ -878,6 +933,17 @@ AC_PROG_CPP () {
     fi
     AC_FAIL " (not found)"
 }
+
+
+#
+# AC_QUIET does something with the quiet flag set (doesn't work on
+#          all the AC_ function yet)
+#
+AC_QUIET() {
+    _sssh=T
+    eval $*
+}
+
 
 #
 # AC_FAIL spits out an error message, then __fail's 

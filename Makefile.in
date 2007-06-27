@@ -26,16 +26,16 @@ xrpm.a:	$(LIBOBJ)
 	ar crv xrpm.a $(LIBOBJ)
 	ranlib xrpm.a
 
-makepkg: makepkg.c xrpm.a
-	$(CC) -o makepkg $(CFLAGS) $(LFLAGS) makepkg.c xrpm.a $(LIBES)
+makepkg: makepkg.o xrpm.a @OPTIONS@
+	$(CC) -o makepkg $(CFLAGS) $(LFLAGS) makepkg.o xrpm.a $(LIBES) @OPTIONS@
 
-xrpm:	xrpm.c xrpm.a
-	$(CC) -o xrpm $(CFLAGS) $(LFLAGS) xrpm.c xrpm.a $(LIBES)
+xrpm:	xrpm.o xrpm.a @OPTIONS@
+	$(CC) -o xrpm $(CFLAGS) $(LFLAGS) xrpm.o xrpm.a $(LIBES) @OPTIONS@
 
-cpio_wr.o: cpio_wr.c pax.h cpio_wr.h makepkg.h
-makepkg.o: makepkg.c makepkg.h xrpm.h mapping.h
+cpio_wr.o: cpio_wr.c pax.h cpio_wr.h makepkg.h config.h
+makepkg.o: makepkg.c makepkg.h xrpm.h mapping.h config.h
 rpmarchnames.o: rpmarchnames.c mapping.h
 rpmosnames.o: rpmosnames.c mapping.h
 rpmsignames.o: rpmsignames.c
 rpmtagnames.o: rpmtagnames.c
-xrpm.o: xrpm.c xrpm.h mapping.h
+xrpm.o: xrpm.c xrpm.h mapping.h config.h

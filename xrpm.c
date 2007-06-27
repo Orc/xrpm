@@ -48,9 +48,7 @@ static const char rcsid[] = "Mastodon $Id: xrpm.c,v 1.11 2000/07/31 19:20:17 orc
 #   include <malloc.h>
 #endif
 
-#if HAVE_X_GETOPT
-#   include <basis/options.h>
-#endif
+#include <basis/options.h>
 
 #include "xrpm.h"
 #include "mapping.h"
@@ -147,8 +145,8 @@ readheaderblock(struct rpm_header* pkg, int fd, struct rpm_info_header *sb)
 {
     struct rpm_super superblock;
     int ct, i, sz;
-    unsigned char magic[8];
-    static char hmagic[4] = { 0x8E, 0xAD, 0xE8, 0x01 };
+    BYTE magic[8];
+    static BYTE hmagic[4] = { 0x8E, 0xAD, 0xE8, 0x01 };
 
     if (pkg->major >= 3) {
 	sz = read(fd, magic, 8);
@@ -212,6 +210,7 @@ static char *datatypes[] = {
 	"String",
 	"Binary",
 	"Stringarray",
+	"Internationalized string",
 };
 #define NRDATATYPES	(sizeof datatypes/sizeof datatypes[0])
 
@@ -220,7 +219,7 @@ static char *datatypes[] = {
  * display a single field out of a rpm header block
  */
 static void
-display_field(struct rpm_info *inode, char *data, char *iname, int inum)
+display_field(struct rpm_info *inode, BYTE *data, char *iname, int inum)
 {
     int i;
 
@@ -249,18 +248,19 @@ display_field(struct rpm_info *inode, char *data, char *iname, int inum)
 		    printf("%d: %u\n", i, *data++);
 		    break;
 	case RI_16BIT:
-		    printf("%d: %u\n", i, ntohs(*((short*)data)));
+		    printf("%d: %u\n", i, ntohs(*((WORD*)data)));
 		    data += 2;
 		    break;
 	case RI_32BIT:
-		    printf("%d: %u\n", i, ntohl(*((long*)data)));
+		    printf("%d: %u\n", i, ntohl(*((DWORD*)data)));
 		    data += 4;
 		    break;
 	case RI_64BIT:
-		    printf("%d: %lu %lu\n", i, ntohl(*((long*)data)), ntohl(*((long*)(data+4))));
+		    printf("%d: %lu %lu\n", i, ntohl(*((DWORD*)data)), ntohl(*((DWORD*)(data+4))));
 		    data += 8;
 		    break;
 	case RI_STRING:
+	case RI_STRING_INTL:
 		    printf("%d: %s\n", i, data);
 		    i = inode->count;
 		    break;
@@ -301,7 +301,7 @@ displayheaderblock(struct rpm_info_header *sb,
                    char *names[], int nrnames,
 		   char *field_to_display)
 {
-    unsigned char *nm = 0;
+    char *nm = 0;
     int thisino, i, j;
 
     if (field_to_display == 0) {
@@ -347,7 +347,6 @@ displayheaderblock(struct rpm_info_header *sb,
 /*
  * options to the program
  */
-#if HAVE_X_GETOPT
 struct x_option options[] = {
     { 'a', 'a', "all",		0,	"Display all package information" },
     { 'i', 'i', "package-header",0,	"Display the package header" },
@@ -375,12 +374,6 @@ struct x_option options[] = {
 #  define OPTARG	x_optarg
 #  define OPTIND	x_optind
 #  define OPTERR	x_opterr
-#else
-#  define GETOPT(ac,av)	getopt(ac,av, "aisptdxhR:Vhql")
-#  define OPTARG	optarg
-#  define OPTIND	optind
-#  define OPTERR	opterr
-#endif
 
 
 /*
@@ -395,6 +388,7 @@ main(int argc, char ** argv)
     unsigned char pgpsig[259];
     long pos;
     int opt;
+    char cpio_cmd[80];
 
     int show_header = 0;
     int show_signature = 0;
@@ -440,13 +434,8 @@ main(int argc, char ** argv)
 		    exit(0);
 	default:
 	case 'h':
-#if HAVE_X_GETOPT
 		    fprintf(stderr, "usage: xrpm [options] [package]\n\n");
 		    showopts(stderr, NROPT, options);
-#else
-		    fprintf(stderr,
-			"usage: xrpm [-aisptdxhVhql] [-Rfield] [package]\n");
-#endif
 		    exit( opt == 'h' ? 0 : 1);
 	}
     }
@@ -463,8 +452,13 @@ main(int argc, char ** argv)
 
     sz = read(0, &hdr, sizeof hdr);
 
-    if ((sz != sizeof hdr) || (hdr.magic != MAGIC)) {
-	puts("Not a rpm file");
+    if ((sz != sizeof hdr)) {
+	perror("Reading file header");
+	exit(1);
+    }
+
+    if (hdr.magic != MAGIC) {
+	printf("Not a rpm file (magic %lx vs %lx)\n", hdr.magic, MAGIC);
 	exit(1);
     }
 
@@ -539,9 +533,13 @@ main(int argc, char ** argv)
 	while ((sz = read(0, block, sizeof block)) > 0)
 	    write(1, block, sz);
     }
-    else if (list_archive)
-	system("zcat | cpio -ivt");
-    else if (extract_archive)
-	system("zcat | cpio -ivdmu");
+    else if (list_archive) {
+	sprintf(cpio_cmd, "gunzip | cpio -i%st", quieter ? "" : "v");
+	system(cpio_cmd);
+    }
+    else if (extract_archive) {
+	sprintf(cpio_cmd, "gunzip | cpio -i%sdmu", quieter ? "" : "v");
+	system(cpio_cmd);
+    }
     exit(0);
 } /* xrpm */

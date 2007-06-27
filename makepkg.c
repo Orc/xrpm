@@ -59,9 +59,7 @@ static const char rcsid[] = "Mastodon $Id: makepkg.c,v 1.14 2000/05/21 16:33:42 
 #   include <errno.h>
 #endif
 
-#if HAVE_X_GETOPT
-#   include <basis/options.h>
-#endif
+#include <basis/options.h>
 
 #include "makepkg.h"
 #include "xrpm.h"
@@ -779,8 +777,6 @@ checkreq(char** errstr, char* candidate, char* name)
 /* 
  * commandline options
  */
-#if HAVE_X_GETOPT
-
 struct x_option options[] = {
     { 'v', 'v', "verbose", 0, "Be chattery while we're making the package" },
     { 'h', 'h', "help",    0, "Give this message" },
@@ -793,12 +789,6 @@ struct x_option options[] = {
 #  define OPTERR	x_opterr
 #  define OPTIND	x_optind
 #  define OPTARG	x_optarg
-#else
-#  define GETOPT(ac,av)	getopt(ac,av,"vhVoa")
-#  define OPTERR	opterr
-#  define OPTIND	optind
-#  define OPTARG	optarg
-#endif
 
 
 /*
@@ -858,12 +848,8 @@ main(int argc, char **argv)
 		exit (0);
 
 	default:
-#if HAVE_X_GETOPT
 		fprintf(stderr, "usage: makepkg [options] [command-file]\n\n");
 		showopts(stderr, NROPTIONS, options);
-#else
-		fprintf(stderr, "usage: makepkg [-vVoah] [command-file]\n");
-#endif
 		exit ( opt == 'h' ? 0 : 1);
 	}
     }
