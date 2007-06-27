@@ -1,0 +1,16 @@
+#! /bin/sh
+#
+# Mastodon build file for eject (1.2+orc)
+#
+
+. ./Mastodon.inc
+
+exedir XRPM
+
+make distclean
+ 
+CC="$SYSCC" CFLAGS=-O2 ./configure.sh --prefix=$XRPM/usr
+
+make || exit 1
+make install
+make clean

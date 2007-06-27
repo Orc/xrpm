@@ -1,0 +1,234 @@
+.TH MAKEPKG 1 "Mastodon Utilities" "Orc" \" -*- nroff -*-
+
+.SH NAME
+makepg \- build a rpm-format software package.
+
+.SH SYNOPSIS
+.B makepkg
+[\-vhVoa]
+[package specification]
+.br
+.B makepkg
+{\-\-version,\-\-help,\-\-verbose,\-\-show-os,\-\-show-arch} [package specification]
+
+.SH DESCRIPTION
+.BR Makepkg
+builds a Red-Hat compatable software package.
+It does not support digital signatures yet, nor does it
+support `source' archives, but it has a clean build-file
+format and does not require specialized libraries or
+elaborate build environments to generate packages.
+.PP
+To use
+.B makepkg
+to build packages, you need to write a package specification.
+Package specifications are set up like
+.I Microsoft
+.I Windows
+.B .INI
+files, with section headers enclosed in [].
+.TP
+.SH [PACKAGE]
+This section describes the package (package name, version, revision,
+distribution, author, and copyright.)  It consists of a collection
+of
+.I value\fR=\fIcontent
+lines, which are:
+.RS
+.TP
+NAME
+This is the name of the package.
+.B (required)
+.TP
+VERSION
+This is the current version number of the package.
+.B (required)
+.TP
+RELEASE
+This is the release number of the package.  I'm not sure what's
+different between this and VERSION, but perhaps the people at Red Hat
+know.
+.TP
+AUTHOR
+This is the person who wrote the package, or the company that's
+distributing it.
+.B (required)
+.TP
+DISTRIBUTION
+This is the distribution that the package is part of.
+.TP
+SUMMARY
+This is a short one-line summary describing the package.
+.B (required)
+.TP
+URL
+This is apparently for external documentation, if you want to have
+a web page describing this package.
+.TP
+COPYRIGHT
+This is a brief description of the copyright terms that the package
+is distributed under.  Common copyright terms are
+.B GPL\fR,
+for the 
+.I GNU Public License\fR,
+.B BSD\fR,
+for a license like the one that
+UC-Berkeley put on BSD Unix, or
+.B Commercial\fR,
+for any sort of commercial license that you care to mention.
+.B (required)
+.TP
+OS
+This describes the operating system this package is for, if it's
+not for the system that you built the package on. 
+The only operating systems currently defined for
+.B makepkg
+are
+.I Linux\fR,
+.I Solaris\fR,
+.I SunOS\fR,
+and
+.I Irix\fR.
+You can find out which operating systems
+.B makepkg
+currently supports
+by using the
+.I \-\-show-os
+option.
+.TP
+ARCH
+This describes the machine architecture that this package is
+for, if it's not for the machine that you're building the package on.
+The machines currently defined for
+.B makepkg
+are
+.I Eniac\fR,
+the 
+.B Intel
+ia32 architecture (
+.I i386\fR,
+.I i486\fR,
+.I 8050x (\fBPentium\fR, also known as \fIi586\fR), and
+.I 8052x (\fBPentium Pro\fR and \fBPentium II\fR, also known
+as \fIi686\fR)
+families,
+and 
+.B AMD
+and
+.B Cyrix
+clones),
+.B Motorola\fR's
+.I PowerPC\fR(\fBppc\fR)
+and
+.I 680x0\fR(\fB68000\fR)
+chips,
+the
+.B Sun
+.I sparc
+chip, and the
+.B MIPS \fR(also \fIIP\fR and \fIsgi\fR)
+.I R
+chips.  You can find out which architectures are supported
+by
+.B makepkg by using the
+.I \-\-show-arch
+option.
+.RE
+
+.TP
+.SH [DESCRIPTION]
+This section contains a text description of the package.  Red Hat Software
+says in their description of the protocol that descriptions are depreciated,
+and people should use summary lines instead, but third parties don't seem
+to be paying much attention to this.
+.TP
+.SH [NEEDS]
+This section lists the prerequisites for this package, one prerequisite
+per line, in `package version' format.  The most common prerequisites
+are shared libraries and executable formats, for instance:
+
+.RS
+.nf
+[NEEDS]
+libc.so.4	4.8.0
+.fi
+.RE
+
+.PP
+.RS
+I have \fBNO IDEA\fR what the reference implementation wants to see here.
+If you know how the reference implementation works, please drop me a line.
+.RE
+
+.TP
+.SH [FILES]
+This section contains all the files in the package, one per line. 
+.B Makepkg
+supports file relocation in the [FILES]
+section, by giving filenames of the form
+\fIfilename\fB => \fIdestination\fR.
+A filename like this will store the filename in the package with
+the
+.I destination
+name.
+.TP
+.SH [PREINSTALL]
+This section is a shellscript that rpm should run before trying to
+install the package.  If you need to do anything like set up special
+users or groups for the package, you would do it here to avoid unpacking
+errors.
+.TP
+.SH [INSTALL]
+This section is a shellscript that rpm should run after installing
+the package.  Starting the package up, or modifying system .rc files
+(dangerous!) should be done here.
+.TP
+.SH [UNINSTALL]
+This section is a shellscript that rpm should run after uninstalling
+the package.
+
+.SH EXAMPLES
+This example builds a ls package from binaries in the current directory.
+.RS
+.nf
+[PACKAGE]
+    name=ls
+    version=1.0
+    release=1
+    author="orc@pell.chi.il.us"
+    distribution="Mastodon"
+    summary="Berkeley ls and appropriate aliases"
+    URL="http://www.pell.chi.il.us/~orc/Code/Mastodon/"
+    COPYRIGHT=BSD
+
+[DESCRIPTION]
+    Berkeley ls, ported to Linux to replace the FSF one.
+
+[FILES]
+    ls => /bin/ls
+    ls.1 => /usr/man/man1/ls.1
+
+[NEEDS]
+    libc.so.4	4.8.0
+
+[PREINSTALL]
+    rm -f /usr/man/man1/ls.1*
+    rm -f /usr/man/cat1/ls.1*
+
+[INSTALL]
+    ln -sf ls /bin/lf
+    ln -sf ls /bin/ll
+
+[UNINSTALL]
+    rm -f /bin/lf /bin/ll
+.fi
+.RE
+.TP
+
+.SH AUTHOR
+David Parsons (
+.I orc@pell.chi.il.us
+)
+
+.SH BUGS
+Legion

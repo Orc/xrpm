@@ -1,0 +1,32 @@
+[package]
+
+    NAME="xrpm"
+    VERSION="0.0"
+    AUTHOR="orc@pell.chi.il.us"
+    DISTRIBUTION="Mastodon"
+    SUMMARY="RPM generation/extraction tools"
+    URL="http://www.pell.chi.il.us/~orc/Code/xrpm"
+    COPYRIGHT="BSD"
+    ARCH=Eniac
+
+
+[needs]
+
+    libc.so.4
+
+[description]
+
+    Xrpm and makepkg are rpm extraction and creation tools created
+    by looking at the published specifications for Red Hat Software's
+    RPM packaging system.  They contain no Red Hat code.
+
+[files]
+
+; binaries
+;
+makepkg		=> /usr/local/bin/makepkg
+xrpm   		=> /usr/local/bin/xprm
+
+; manpages
+;
+makepkg.1	=> /usr/local/man/man1/makepkg.1
