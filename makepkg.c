@@ -33,7 +33,7 @@
  *  THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-static const char rcsid[] = "Mastodon $Id: makepkg.c,v 1.14 2000/05/21 16:33:42 orc Exp $";
+static const char rcsid[] = "%Z% %M% %I% %D%";
 
 /*
  * makepkg: generate a rpm package
@@ -836,7 +836,7 @@ main(int argc, char **argv)
 		break;
 
 	case 'V':
-		puts("makepkg $Revision: 1.14 $");
+		puts("%M% %I%");
 		exit(0);
 
 	case 'o':

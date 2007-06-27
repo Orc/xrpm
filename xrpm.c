@@ -33,7 +33,7 @@
  *  THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-static const char rcsid[] = "Mastodon $Id: xrpm.c,v 1.11 2000/07/31 19:20:17 orc Exp $";
+static const char rcsid[] = "%Z% %M% %I% %D%";
 
 /*
  * xrpm: extract things from Redhat's proprietary packaging system.
@@ -344,6 +344,31 @@ displayheaderblock(struct rpm_info_header *sb,
 } /* displayheaderblock */
 
 
+char *
+get_string_field(int tag, struct rpm_info_header *sb)
+{
+    int i;
+
+    for (i=0; i < sb->super.nritems; i++) {
+	if (sb->ino[i].tag == tag) {
+	    /*display_field(&sb->ino[i], sb->data, 0, 0);*/
+
+	    if (sb->ino[i].type != RI_STRING &&
+		sb->ino[i].type != RI_STRING_INTL) {
+		/*fprintf(stderr, "no\n");*/
+
+		return 0;
+	    }
+
+	    /*fprintf(stderr, "here it is [%s]\n", sb->data + sb->ino[i].offset);*/
+
+	    return sb->data + sb->ino[i].offset;
+	}
+    }
+    return 0;
+}
+
+
 /*
  * options to the program
  */
@@ -361,7 +386,7 @@ struct x_option options[] = {
     { 't', 't', "list-contents",0,	"Display the contents of the package" },
     { 'd', 'd', "dump", 	0,	"Dump the contents of the package to\n"
 					"stdout. The contents of rpm packages\n"
-					"are gzipped cpio files, so you'll\n"
+					"are compressed cpio files, so you'll\n"
 					"need to decompress the file before\n"
 					"you can do anything with it." },
     { 'x',	'x', "extract",	0,	"Extract the contents of the archive" },
@@ -388,7 +413,7 @@ main(int argc, char ** argv)
     unsigned char pgpsig[259];
     long pos;
     int opt;
-    char cpio_cmd[80];
+    char *p, *decompress, *cpio_cmd;
 
     int show_header = 0;
     int show_signature = 0;
@@ -430,7 +455,7 @@ main(int argc, char ** argv)
 		    break;
 	case 'x':   extract_archive = 1;
 		    break;
-	case 'V':   fprintf(stderr, "xrpm $Revision: 1.11 $\n");
+	case 'V':   fprintf(stderr, "%M% %I%\n");
 		    exit(0);
 	default:
 	case 'h':
@@ -524,7 +549,22 @@ main(int argc, char ** argv)
     if (show_database)
 	displayheaderblock(&db, rpmtagnames, nrrpmtagnames, field_to_display);
 
-    /* and what follows should be a gzipped cpio file */
+    /* pick out the program (field 1125) that was used to compress the payload
+     */
+    if ( (p = get_string_field(1125, &db)) == 0 || *p == 0)
+	decompress = "gzip -d";
+    else if ( decompress = malloc(strlen(p) + 4 /*strlen("-d\0")*/ ) )
+	sprintf(decompress, "%s -d", p);
+
+    /* allocate memory for the uncompress + cpio command */
+    cpio_cmd = malloc(strlen(p) + 4 + 12 /*strlen("|cpio -ivdmu")*/ ); 
+
+    if (decompress == 0 || cpio_cmd == 0) {
+	perror("allocate working storage");
+	exit(2);
+    }
+
+    /* and what follows should be a compressed cpio file */
 
     if (dump_archive) {
 	char block[512];
@@ -534,11 +574,11 @@ main(int argc, char ** argv)
 	    write(1, block, sz);
     }
     else if (list_archive) {
-	sprintf(cpio_cmd, "gunzip | cpio -i%st", quieter ? "" : "v");
+	sprintf(cpio_cmd, "%s | cpio -i%st", decompress, quieter ? "" : "v");
 	system(cpio_cmd);
     }
     else if (extract_archive) {
-	sprintf(cpio_cmd, "gunzip | cpio -i%sdmu", quieter ? "" : "v");
+	sprintf(cpio_cmd, "%s | cpio -i%sdmu", decompress, quieter ? "" : "v");
 	system(cpio_cmd);
     }
     exit(0);
