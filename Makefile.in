@@ -16,11 +16,11 @@ install: install.bin install.man
 
 install.bin: xrpm makepkg
 	install -d @prefix@/bin
-	install -o bin -g bin -m 555 -s -c makepkg xrpm @prefix@/bin
+	install -m 555 -s -c makepkg xrpm @prefix@/bin
 
 install.man:
 	install -d @prefix@/man/man1
-	install -o man -g man -m 444    -c makepkg.1 @prefix@/man/man1
+	install -m 444    -c makepkg.1 @prefix@/man/man1
 
 xrpm.a:	$(LIBOBJ)
 	ar crv xrpm.a $(LIBOBJ)
