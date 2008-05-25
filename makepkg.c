@@ -580,7 +580,7 @@ makeheader(struct info *info)
 
     hdr.archnum = htons(arch);
     hdr.osnum = htons(os);
-    strcpy(hdr.name, info->name);
+    strcpy((char*)hdr.name, info->name);
     hdr.signature_type = 0;	/* no signatures */
 
     /* add all single-valued tags

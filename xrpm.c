@@ -41,6 +41,7 @@ static const char rcsid[] = "%Z% %M% %I% %D%";
 #include "config.h"
 
 #include <stdio.h>
+#include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -101,7 +102,7 @@ describe_header(struct rpm_header* hdr)
     int os, arch;
     int x;
 
-    if (strlen(hdr->name) > 0)
+    if (strlen((char*)(hdr->name)) > 0)
 	printf("(%s)", hdr->name);
     else
 	printf("This");
@@ -362,7 +363,7 @@ get_string_field(int tag, struct rpm_info_header *sb)
 
 	    /*fprintf(stderr, "here it is [%s]\n", sb->data + sb->ino[i].offset);*/
 
-	    return sb->data + sb->ino[i].offset;
+	    return (char*)(sb->data + sb->ino[i].offset);
 	}
     }
     return 0;
