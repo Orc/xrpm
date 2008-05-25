@@ -54,6 +54,7 @@ static const char rcsid[] = "%Z% %M% %I% %D%";
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <time.h>
 
 #if HAVE_ERRNO_H
 #   include <errno.h>
@@ -64,6 +65,11 @@ static const char rcsid[] = "%Z% %M% %I% %D%";
 #include "makepkg.h"
 #include "xrpm.h"
 #include "mapping.h"
+
+extern int vcpio_wr(int, struct file*);
+extern int push(int, char*, int);
+extern void align(int);
+extern void cpio_endwr(int);
 
 extern struct mapping osmap[];
 extern int          nrosmap;
@@ -134,7 +140,6 @@ char*
 getsectionline()
 {
     static char line[512];
-    char *ptr;
 
     if (iscached) {
 	strcpy(line, cache);
@@ -189,7 +194,7 @@ char *
 gettoken(char *line)
 {
     static char token[512];
-    char *p, *q;
+    char *p;
 
     while (isspace(*line))
 	++line;
@@ -347,6 +352,7 @@ needs_section(struct info* info)
  * SOURCE => DESTDIR, makepkg will read the file off SOURCE, but write
  * into the archive so it will be unpacked as DEST.
  */
+void
 file_section(struct info* info)
 {
     char *p;
@@ -491,6 +497,7 @@ data32bit(unsigned long value)
  * create a new inode in the rpm_info array, returning
  * the inode number
  */
+int
 newino(short tag, int type, int count)
 {
     ino = realloc(ino, (sb.nritems+1) * sizeof ino[0]);
@@ -504,6 +511,7 @@ newino(short tag, int type, int count)
 /*
  * add a string to the rpm_info array
  */
+void
 addstring(short tag, char* string)
 {
     int x;
@@ -518,6 +526,7 @@ addstring(short tag, char* string)
 /*
  * add an 8-bit quantity to the rpm_info array
  */
+void
 add8bit(short tag, char value)
 {
     int x;
@@ -530,6 +539,7 @@ add8bit(short tag, char value)
 /*
  * add a 32-bit quantity to the rpm_info array
  */
+void
 add32bit(short tag, unsigned long value)
 {
     int x;
@@ -541,14 +551,14 @@ add32bit(short tag, unsigned long value)
 /*
  * finally, the procedure that generates the header
  */
-char *
+void
 makeheader(struct info *info)
 {
-    char scratch[200];
     int x;
     int os=EOF,
 	arch=EOF;
     time_t now;
+    extern char version[];
 
     /* allocate the parts of the header */
     memset(&sb, 0, sizeof sb);
@@ -674,7 +684,7 @@ makeheader(struct info *info)
     /* after everything else, write out the packager version.  I'll bet
      * that the reference implementation will fail on this.
      */
-    addstring(RPMTAG_RPMVERSION, "makepkg $Revision: 1.14 $");
+    addstring(RPMTAG_RPMVERSION, version);
 
     /* write out the completed header
      */
@@ -685,7 +695,7 @@ makeheader(struct info *info)
     write(1, ino, ntohl(sb.nritems) * sizeof ino[0]);
     write(1, data, ntohl(sb.size));
     if (verbose)
-	fprintf(stderr, "header: %d bytes\n",
+	fprintf(stderr, "header: %ld bytes\n",
 			sizeof sb + (ntohl(sb.nritems) * sizeof ino[0]) + ntohl(sb.size));
 } /* makeheader */
 
@@ -713,7 +723,7 @@ writepackage(struct info *info)
 	close(0);
 	dup(io[0]);
 	close(io[1]);
-	execlp("gzip","gzip", 0);
+	execlp("gzip","gzip", (void*)0);
 	error("cannot execute gzip");
 	exit(255);
     }
@@ -728,13 +738,14 @@ writepackage(struct info *info)
 	if (status == 0) /* need to copy the file contents */ {
 	    if ((fd = open(info->file[x].name, O_RDONLY)) != EOF) {
 
-		if (verbose)
+		if (verbose) {
 		    if (strcmp(info->file[x].name, info->file[x].dest) != 0)
 			fprintf(stderr, "packaging %s as %s\n",
 				info->file[x].name, info->file[x].dest);
 		    else
 			fprintf(stderr, "packaging %s\n",
 				info->file[x].dest);
+		}
 
 		while ((sz = read(fd, blk, sizeof blk)) > 0)
 		    push(io[1], blk, sz);
@@ -802,11 +813,12 @@ showmaps(struct mapping *map, int nrmap, char* desc)
     printf("\n%s\n", desc);
 
     for (ix = 0; ix < nrmap; ix++) {
-	if (val != map[ix].number)
+	if (val != map[ix].number) {
 	    if (map[ix].desc)
 		printf("\n%s:", map[ix].desc);
 	    else
 		putchar('\n');
+	}
 	printf(" %s", map[ix].name);
 	val = map[ix].number;
     }
@@ -816,14 +828,13 @@ showmaps(struct mapping *map, int nrmap, char* desc)
 /*
  * makepkg, in mortal flesh
  */
+double
 main(int argc, char **argv)
 {
     struct info info;
     char *p;
     int x;
     int needtomove = 0;
-    int showarch=0;
-    int showos=0;
     int sectionid;
     char *missing = 0;
     int opt;
@@ -927,13 +938,14 @@ main(int argc, char **argv)
     /* populate destination file names */
     for (x = 0; x < info.nrfile; x++) {
 	needtomove |= info.file[x].tobemoved;
-	if (info.file[x].dest == 0)
+	if (info.file[x].dest == 0) {
 	    if (info.prefix) {
 		info.file[x].dest = malloc(strlen(info.prefix) + strlen(info.file[x].name) + 2);
 		sprintf(info.file[x].dest, "%s/%s", info.prefix, info.file[x].name);
 	    }
 	    else
 		info.file[x].dest = info.file[x].name;
+	}
     }
 
     makeheader(&info);
@@ -961,11 +973,11 @@ main(int argc, char **argv)
 
 	fprintf(stderr, "files       = [\n");
 	for (x=0; x < info.nrfile; x++) {
-	    fprintf(stderr, "       %s, uid=%u, gid=%u, mode=%u, size=%lu, mtime=%d\n",
+	    fprintf(stderr, "       %s, uid=%u, gid=%u, mode=%u, size=%lu, mtime=%u\n",
 		    info.file[x].dest,
 		    info.file[x].st.st_uid, info.file[x].st.st_gid,
-		    info.file[x].st.st_mode, info.file[x].st.st_size,
-		    info.file[x].st.st_mtime);
+		    info.file[x].st.st_mode, (unsigned long)info.file[x].st.st_size,
+		    (unsigned int)info.file[x].st.st_mtime);
 	}
 	fprintf(stderr, "              ]\n");
     }

@@ -2,7 +2,8 @@ LIBES=@LIBS@
 CFLAGS=@CFLAGS@
 LFLAGS=@LDFLAGS@
 CC=@CC@
-LIBOBJ=rpmarchnames.o rpmosnames.o rpmsignames.o rpmtagnames.o cpio_wr.o
+LIBOBJ=rpmarchnames.o rpmosnames.o rpmsignames.o rpmtagnames.o \
+       cpio_wr.o version.o
 
 all:	xrpm makepkg
 
@@ -29,6 +30,11 @@ xrpm.a:	$(LIBOBJ)
 makepkg: makepkg.o xrpm.a @OPTIONS@
 	$(CC) -o makepkg $(CFLAGS) $(LFLAGS) makepkg.o xrpm.a $(LIBES) @OPTIONS@
 
+version.o: VERSION
+	echo 'char version[] = VERSION;' > version.c
+	$(CC) -c -o version.o -DVERSION=\"`cat VERSION`\" version.c
+	rm -f version.c
+	
 xrpm:	xrpm.o xrpm.a @OPTIONS@
 	$(CC) -o xrpm $(CFLAGS) $(LFLAGS) xrpm.o xrpm.a $(LIBES) @OPTIONS@
 

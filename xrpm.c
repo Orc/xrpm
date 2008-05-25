@@ -43,6 +43,9 @@ static const char rcsid[] = "%Z% %M% %I% %D%";
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
+#if HAVE_ARPA_INET_H
+#   include <arpa/inet.h>
+#endif
 #include <unistd.h>
 #include <stdlib.h>
 #if HAVE_MALLOC_H
@@ -145,7 +148,7 @@ void
 readheaderblock(struct rpm_header* pkg, int fd, struct rpm_info_header *sb)
 {
     struct rpm_super superblock;
-    int ct, i, sz;
+    int i, sz;
     BYTE magic[8];
     static BYTE hmagic[4] = { 0x8E, 0xAD, 0xE8, 0x01 };
 
@@ -226,14 +229,14 @@ display_field(struct rpm_info *inode, BYTE *data, char *iname, int inum)
 
     if (!quieter) {
 	if (iname)
-	    printf("[%d] = %s (%d)", inum, iname, inode->tag);
+	    printf("[%d] = %s (%lu)", inum, iname, inode->tag);
 	else
-	    printf("[%d] = %d", inum, inode->tag);
+	    printf("[%d] = %lu", inum, inode->tag);
 
 	if (inode->type < NRDATATYPES)
 	    printf(" %s\n", datatypes[inode->type]);
 	else
-	    printf(" datatype %d\n", inode->type);
+	    printf(" datatype %lu\n", inode->type);
     }
 
     data += inode->offset;
@@ -257,7 +260,8 @@ display_field(struct rpm_info *inode, BYTE *data, char *iname, int inum)
 		    data += 4;
 		    break;
 	case RI_64BIT:
-		    printf("%d: %lu %lu\n", i, ntohl(*((DWORD*)data)), ntohl(*((DWORD*)(data+4))));
+		    printf("%d: %u %u\n", i, ntohl(*((DWORD*)data)),
+					     ntohl(*((DWORD*)(data+4))));
 		    data += 8;
 		    break;
 	case RI_STRING:
@@ -298,12 +302,13 @@ fieldname(int tag, char **names, int nrnames)
  * pass in names[] and nrnames to point at the appropriate names for each
  * block)
  */
+void
 displayheaderblock(struct rpm_info_header *sb,
                    char *names[], int nrnames,
 		   char *field_to_display)
 {
     char *nm = 0;
-    int thisino, i, j;
+    int i, j;
 
     if (field_to_display == 0) {
 	printf("header\n"
@@ -405,6 +410,7 @@ struct x_option options[] = {
 /*
  * xrpm, in mortal flesh
  */
+void
 main(int argc, char ** argv)
 {
     struct rpm_header hdr;
@@ -412,6 +418,7 @@ main(int argc, char ** argv)
     struct rpm_info_header db;
     int sz;
     unsigned char pgpsig[259];
+    extern char version[];
     long pos;
     int opt;
     char *p, *decompress, *cpio_cmd;
@@ -456,7 +463,7 @@ main(int argc, char ** argv)
 		    break;
 	case 'x':   extract_archive = 1;
 		    break;
-	case 'V':   fprintf(stderr, "%M% %I%\n");
+	case 'V':   fprintf(stderr, "%s\n", version);
 		    exit(0);
 	default:
 	case 'h':
@@ -554,7 +561,7 @@ main(int argc, char ** argv)
      */
     if ( (p = get_string_field(1125, &db)) == 0 || *p == 0)
 	decompress = "gzip -d";
-    else if ( decompress = malloc(strlen(p) + 4 /*strlen("-d\0")*/ ) )
+    else if (( decompress = malloc(strlen(p) + 4 /*strlen("-d\0")*/ ) ))
 	sprintf(decompress, "%s -d", p);
 
     /* allocate memory for the uncompress + cpio command */
