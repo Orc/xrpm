@@ -2,10 +2,10 @@
 
     NAME="xrpm"
     VERSION="0.0"
-    AUTHOR="orc@pell.chi.il.us"
+    AUTHOR="orc@pell.portland.or.us"
     DISTRIBUTION="Mastodon"
     SUMMARY="RPM generation/extraction tools"
-    URL="http://www.pell.chi.il.us/~orc/Code/xrpm"
+    URL="http://www.pell.portland.or.us/~orc/Code/xrpm"
     COPYRIGHT="BSD"
     ARCH=Eniac
 
