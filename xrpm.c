@@ -33,8 +33,6 @@
  *  THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-static const char rcsid[] = "%Z% %M% %I% %D%";
-
 /*
  * xrpm: extract things from Redhat's proprietary packaging system.
  */
@@ -410,7 +408,7 @@ struct x_option options[] = {
 /*
  * xrpm, in mortal flesh
  */
-void
+int
 main(int argc, char ** argv)
 {
     struct rpm_header hdr;

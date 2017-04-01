@@ -10,4 +10,4 @@ struct mapping {
     char *desc;
 } ;
 
-#endif _MAPPING_D
+#endif/*_MAPPING_D*/

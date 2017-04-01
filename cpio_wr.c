@@ -35,10 +35,9 @@
  * SUCH DAMAGE.
  *
  *	Id: cpio.c,v 1.3 1995/05/30 00:06:54 rgrimes
+ *      sccsid: @(#)cpio.c	8.1 (Berkeley) 5/31/93
+ *      Id: cpio_wr.c,v 1.2 1998/05/21 07:40:55 orc
  */
-
-static const char sccsid[] = "@(#)cpio.c	8.1 (Berkeley) 5/31/93";
-static const char rcsid[] = "$Id: cpio_wr.c,v 1.2 1998/05/21 07:40:55 orc Exp $";
 
 #include "config.h"
 

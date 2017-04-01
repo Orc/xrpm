@@ -33,8 +33,6 @@
  *  THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-static const char rcsid[] = "%Z% %M% %I% %D%";
-
 /*
  * makepkg: generate a rpm package
  */
@@ -828,7 +826,7 @@ showmaps(struct mapping *map, int nrmap, char* desc)
 /*
  * makepkg, in mortal flesh
  */
-double
+int
 main(int argc, char **argv)
 {
     struct info info;
