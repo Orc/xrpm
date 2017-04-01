@@ -227,14 +227,14 @@ display_field(struct rpm_info *inode, BYTE *data, char *iname, int inum)
 
     if (!quieter) {
 	if (iname)
-	    printf("[%d] = %s (%lu)", inum, iname, inode->tag);
+	    printf("[%d] = %s (%lu)", inum, iname, (long)(inode->tag) );
 	else
-	    printf("[%d] = %lu", inum, inode->tag);
+	    printf("[%d] = %lu", inum, (long)(inode->tag) );
 
 	if (inode->type < NRDATATYPES)
 	    printf(" %s\n", datatypes[inode->type]);
 	else
-	    printf(" datatype %lu\n", inode->type);
+	    printf(" datatype %lu\n", (long)(inode->type) );
     }
 
     data += inode->offset;
@@ -312,7 +312,8 @@ displayheaderblock(struct rpm_info_header *sb,
 	printf("header\n"
 	       "------\n"
 	       "nritems:   %ld\n"
-	       "data size: %lu\n", sb->super.nritems, sb->super.size);
+	       "data size: %lu\n",
+	       (long)sb->super.nritems, (long)sb->super.size);
 	puts("----");
     }
 
@@ -489,7 +490,8 @@ main(int argc, char ** argv)
     }
 
     if (hdr.magic != MAGIC) {
-	printf("Not a rpm file (magic %lx vs %lx)\n", hdr.magic, MAGIC);
+	printf("Not a rpm file (magic %lx vs %lx)\n",
+			(long)hdr.magic, (long)MAGIC);
 	exit(1);
     }
 
