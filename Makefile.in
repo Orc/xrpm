@@ -10,8 +10,8 @@ all:	xrpm makepkg
 clean:
 	rm -f makepkg xrpm *.o core xrpm.a
 
-distclean seppuku: clean
-	rm -f @CONFIGURE_FILES@ @GENERATED_FILES@
+distclean spotless seppuku: clean
+	@DISTCLEAN@ @CONFIGURE_FILES@ @GENERATED_FILES@
 
 install: install.bin install.man
 

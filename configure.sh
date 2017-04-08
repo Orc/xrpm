@@ -6,6 +6,8 @@ AC_INIT xrpm
 
 AC_PROG_CC || exit 1
 
+unset _MK_LIBRARIAN
+
 TLOGN "Checking for system x_getopt"
 need_local_getopt=T
 if AC_QUIET AC_CHECK_HEADERS basis/options.h; then
