@@ -1,5 +1,5 @@
 /*
- *   Copyright (c) 1998 David Parsons. All rights reserved.
+ *   Copyright (c) 1998,2017 David Parsons. All rights reserved.
  *   
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -16,9 +16,6 @@
  *   This product includes software developed by David Parsons
  *   (orc@pell.portland.or.us)
  *
- *  4. My name may not be used to endorse or promote products derived
- *     from this software without specific prior written permission.
- *     
  *  THIS SOFTWARE IS PROVIDED BY DAVID PARSONS ``AS IS'' AND ANY
  *  EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
  *  THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
@@ -39,13 +36,10 @@
 #include "config.h"
 
 #include <stdio.h>
-#include <string.h>
 #include <sys/types.h>
-#if HAVE_ARPA_INET_H
-#   include <arpa/inet.h>
-#endif
 #include <unistd.h>
 #include <stdlib.h>
+#include <string.h>
 #if HAVE_MALLOC_H
 #   include <malloc.h>
 #endif
@@ -103,7 +97,7 @@ describe_header(struct rpm_header* hdr)
     int os, arch;
     int x;
 
-    if (strlen((char*)(hdr->name)) > 0)
+    if (strlen(hdr->name) > 0)
 	printf("(%s)", hdr->name);
     else
 	printf("This");
@@ -146,7 +140,7 @@ void
 readheaderblock(struct rpm_header* pkg, int fd, struct rpm_info_header *sb)
 {
     struct rpm_super superblock;
-    int i, sz;
+    int ct, i, sz;
     BYTE magic[8];
     static BYTE hmagic[4] = { 0x8E, 0xAD, 0xE8, 0x01 };
 
@@ -227,14 +221,14 @@ display_field(struct rpm_info *inode, BYTE *data, char *iname, int inum)
 
     if (!quieter) {
 	if (iname)
-	    printf("[%d] = %s (%lu)", inum, iname, (long)(inode->tag) );
+	    printf("[%d] = %s (%d)", inum, iname, inode->tag);
 	else
-	    printf("[%d] = %lu", inum, (long)(inode->tag) );
+	    printf("[%d] = %d", inum, inode->tag);
 
 	if (inode->type < NRDATATYPES)
 	    printf(" %s\n", datatypes[inode->type]);
 	else
-	    printf(" datatype %lu\n", (long)(inode->type) );
+	    printf(" datatype %d\n", inode->type);
     }
 
     data += inode->offset;
@@ -258,8 +252,7 @@ display_field(struct rpm_info *inode, BYTE *data, char *iname, int inum)
 		    data += 4;
 		    break;
 	case RI_64BIT:
-		    printf("%d: %u %u\n", i, ntohl(*((DWORD*)data)),
-					     ntohl(*((DWORD*)(data+4))));
+		    printf("%d: %lu %lu\n", i, ntohl(*((DWORD*)data)), ntohl(*((DWORD*)(data+4))));
 		    data += 8;
 		    break;
 	case RI_STRING:
@@ -300,20 +293,18 @@ fieldname(int tag, char **names, int nrnames)
  * pass in names[] and nrnames to point at the appropriate names for each
  * block)
  */
-void
 displayheaderblock(struct rpm_info_header *sb,
                    char *names[], int nrnames,
 		   char *field_to_display)
 {
     char *nm = 0;
-    int i, j;
+    int thisino, i, j;
 
     if (field_to_display == 0) {
 	printf("header\n"
 	       "------\n"
 	       "nritems:   %ld\n"
-	       "data size: %lu\n",
-	       (long)sb->super.nritems, (long)sb->super.size);
+	       "data size: %lu\n", sb->super.nritems, sb->super.size);
 	puts("----");
     }
 
@@ -367,7 +358,7 @@ get_string_field(int tag, struct rpm_info_header *sb)
 
 	    /*fprintf(stderr, "here it is [%s]\n", sb->data + sb->ino[i].offset);*/
 
-	    return (char*)(sb->data + sb->ino[i].offset);
+	    return sb->data + sb->ino[i].offset;
 	}
     }
     return 0;
@@ -409,7 +400,6 @@ struct x_option options[] = {
 /*
  * xrpm, in mortal flesh
  */
-int
 main(int argc, char ** argv)
 {
     struct rpm_header hdr;
@@ -417,7 +407,6 @@ main(int argc, char ** argv)
     struct rpm_info_header db;
     int sz;
     unsigned char pgpsig[259];
-    extern char version[];
     long pos;
     int opt;
     char *p, *decompress, *cpio_cmd;
@@ -462,7 +451,7 @@ main(int argc, char ** argv)
 		    break;
 	case 'x':   extract_archive = 1;
 		    break;
-	case 'V':   fprintf(stderr, "%s\n", version);
+	case 'V':   fprintf(stderr, "%M% %I%\n");
 		    exit(0);
 	default:
 	case 'h':
@@ -490,8 +479,7 @@ main(int argc, char ** argv)
     }
 
     if (hdr.magic != MAGIC) {
-	printf("Not a rpm file (magic %lx vs %lx)\n",
-			(long)hdr.magic, (long)MAGIC);
+	printf("Not a rpm file (magic %lx vs %lx)\n", hdr.magic, MAGIC);
 	exit(1);
     }
 
@@ -561,7 +549,7 @@ main(int argc, char ** argv)
      */
     if ( (p = get_string_field(1125, &db)) == 0 || *p == 0)
 	decompress = "gzip -d";
-    else if (( decompress = malloc(strlen(p) + 4 /*strlen("-d\0")*/ ) ))
+    else if ( decompress = malloc(strlen(p) + 4 /*strlen("-d\0")*/ ) )
 	sprintf(decompress, "%s -d", p);
 
     /* allocate memory for the uncompress + cpio command */

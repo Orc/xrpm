@@ -6,8 +6,6 @@ AC_INIT xrpm
 
 AC_PROG_CC || exit 1
 
-unset _MK_LIBRARIAN
-
 TLOGN "Checking for system x_getopt"
 need_local_getopt=T
 if AC_QUIET AC_CHECK_HEADERS basis/options.h; then
@@ -32,8 +30,6 @@ AC_CHECK_HEADERS errno.h
 test "$OS_FREEBSD" || AC_CHECK_HEADERS malloc.h
 AC_CHECK_FUNCS	tell
 AC_SCALAR_TYPES
-
-AC_CHECK_HEADERS arpa/inet.h
 
 AC_CHECK_FIELD utsname domainname sys/utsname.h
 

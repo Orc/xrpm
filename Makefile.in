@@ -2,26 +2,25 @@ LIBES=@LIBS@
 CFLAGS=@CFLAGS@
 LFLAGS=@LDFLAGS@
 CC=@CC@
-LIBOBJ=rpmarchnames.o rpmosnames.o rpmsignames.o rpmtagnames.o \
-       cpio_wr.o version.o
+LIBOBJ=rpmarchnames.o rpmosnames.o rpmsignames.o rpmtagnames.o cpio_wr.o
 
 all:	xrpm makepkg
 
 clean:
 	rm -f makepkg xrpm *.o core xrpm.a
 
-distclean spotless seppuku: clean
-	@DISTCLEAN@ @CONFIGURE_FILES@ @GENERATED_FILES@
+distclean seppuku: clean
+	rm -f @CONFIGURE_FILES@ @GENERATED_FILES@
 
 install: install.bin install.man
 
 install.bin: xrpm makepkg
 	install -d @prefix@/bin
-	install -m 555 -s -c makepkg xrpm @prefix@/bin
+	install -o bin -g bin -m 555 -s -c makepkg xrpm @prefix@/bin
 
 install.man:
 	install -d @prefix@/man/man1
-	install -m 444    -c makepkg.1 @prefix@/man/man1
+	install -o man -g man -m 444    -c makepkg.1 @prefix@/man/man1
 
 xrpm.a:	$(LIBOBJ)
 	ar crv xrpm.a $(LIBOBJ)
@@ -30,11 +29,6 @@ xrpm.a:	$(LIBOBJ)
 makepkg: makepkg.o xrpm.a @OPTIONS@
 	$(CC) -o makepkg $(CFLAGS) $(LFLAGS) makepkg.o xrpm.a $(LIBES) @OPTIONS@
 
-version.o: VERSION
-	echo 'char version[] = VERSION;' > version.c
-	$(CC) -c -o version.o -DVERSION=\"`cat VERSION`\" version.c
-	rm -f version.c
-	
 xrpm:	xrpm.o xrpm.a @OPTIONS@
 	$(CC) -o xrpm $(CFLAGS) $(LFLAGS) xrpm.o xrpm.a $(LIBES) @OPTIONS@
 

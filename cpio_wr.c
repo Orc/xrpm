@@ -35,9 +35,10 @@
  * SUCH DAMAGE.
  *
  *	Id: cpio.c,v 1.3 1995/05/30 00:06:54 rgrimes
- *      sccsid: @(#)cpio.c	8.1 (Berkeley) 5/31/93
- *      Id: cpio_wr.c,v 1.2 1998/05/21 07:40:55 orc
  */
+
+static const char sccsid[] = "@(#)cpio.c	8.1 (Berkeley) 5/31/93";
+static const char rcsid[] = "$Id: cpio_wr.c,v 1.2 1998/05/21 07:40:55 orc Exp $";
 
 #include "config.h"
 
@@ -60,8 +61,6 @@
 #include "makepkg.h"
 
 long cur_archive_pos = 0;
-
-extern void error(char *, ...);
 
 /*
  * push() writes data to the output device, keeping track of how many bytes
@@ -141,6 +140,35 @@ ul_asc(u_long val, register char *str, register int len, register int base)
 	return(0);
 }
 
+/*
+ * cpio_end_wr()
+ *	write the special file with the name trailer in the proper format
+ * Return:
+ *	result of the write of the trailer from the cpio specific write func
+ */
+
+int
+cpio_endwr(int dest)
+{
+	struct file eof;
+	char blk[512];
+	int st;
+
+	/*
+	 * create a trailer request and call the proper format write function
+	 */
+	memset(&eof, 0, sizeof(eof));
+	eof.st.st_nlink = 1;
+	eof.name = TRAILER;
+	eof.dest = TRAILER;
+	st = vcpio_wr(dest, &eof);
+
+	if (st != -1) {
+	    memset(blk, 0, sizeof blk);
+	    st = 512 - (cur_archive_pos % 512);
+	    push(dest, blk, st);
+	}
+}
 
 /*
  * Routines common to the system VR4 version of cpio (with/without file CRC)
@@ -162,6 +190,7 @@ vcpio_wr(int dest, register struct file *arcn)
 	unsigned int nsz;
 	char hdblk[sizeof(HD_VCPIO)];
 	char symlink[1000];
+	long pos;
 
 	/*
 	 * check and repair truncated device and inode fields in the cpio
@@ -279,35 +308,4 @@ vcpio_wr(int dest, register struct file *arcn)
 	 */
 	error("cpio header is too small for file %s", arcn->name);
 	return(1);
-}
-
-
-/*
- * cpio_end_wr()
- *	write the special file with the name trailer in the proper format
- * Return:
- *	result of the write of the trailer from the cpio specific write func
- */
-
-void
-cpio_endwr(int dest)
-{
-	struct file eof;
-	char blk[512];
-	int st;
-
-	/*
-	 * create a trailer request and call the proper format write function
-	 */
-	memset(&eof, 0, sizeof(eof));
-	eof.st.st_nlink = 1;
-	eof.name = TRAILER;
-	eof.dest = TRAILER;
-	st = vcpio_wr(dest, &eof);
-
-	if (st != -1) {
-	    memset(blk, 0, sizeof blk);
-	    st = 512 - (cur_archive_pos % 512);
-	    push(dest, blk, st);
-	}
 }
