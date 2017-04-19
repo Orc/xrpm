@@ -134,6 +134,25 @@ describe_header(struct rpm_header* hdr)
 
 
 /*
+ * free_info_header() cleans up malloc()ed memory block in and rpm_info_header
+ */
+void
+free_info_header(struct rpm_info_header *p)
+{
+    if ( p ) {
+	if ( p->ino ) {
+	    free( p->ino );
+	    p->ino = 0;
+	}
+	if ( p->data ) {
+	    free( p->data );
+	    p->data = 0;
+	}
+    }
+} /* free_info_header */
+
+
+/*
  * readheaderblock() reads a header segment
  */
 void
@@ -420,6 +439,8 @@ main(int argc, char ** argv)
 
     char* field_to_display = (char*)0;
 
+    memset(&signature, 0, sizeof signature);
+    memset(&db, 0, sizeof db);
 
     OPTERR = 1;
     while ((opt = GETOPT(argc, argv)) != EOF) {
@@ -553,7 +574,7 @@ main(int argc, char ** argv)
 	sprintf(decompress, "%s -d", p);
 
     /* allocate memory for the uncompress + cpio command */
-    cpio_cmd = malloc(strlen(p) + 4 + 12 /*strlen("|cpio -ivdmu")*/ ); 
+    cpio_cmd = malloc(strlen(decompress) + 4 + 12 /*strlen("|cpio -ivdmu")*/ ); 
 
     if (decompress == 0 || cpio_cmd == 0) {
 	perror("allocate working storage");
@@ -577,5 +598,8 @@ main(int argc, char ** argv)
 	sprintf(cpio_cmd, "%s | cpio -i%sdmu", decompress, quieter ? "" : "v");
 	system(cpio_cmd);
     }
+    free_info_header(&db);
+    free_info_header(&signature);
+    free(cpio_cmd);
     exit(0);
 } /* xrpm */
