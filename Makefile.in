@@ -15,12 +15,12 @@ distclean spotless: clean
 install: install.bin install.man
 
 install.bin: xrpm makepkg
-	install -d @prefix@/bin
-	install -o bin -g bin -m 555 -s -c makepkg xrpm @prefix@/bin
+	@INSTALL_DIR@ @prefix@/bin
+	@INSTALL_PROGRAM@ makepkg xrpm @prefix@/bin
 
 install.man:
-	install -d @prefix@/man/man1
-	install -o man -g man -m 444    -c makepkg.1 @prefix@/man/man1
+	@INSTALL_DIR@ @prefix@/man/man1
+	@INSTALL_DATA@ makepkg.1 @prefix@/man/man1
 
 xrpm.a:	$(LIBOBJ)
 	ar crv xrpm.a $(LIBOBJ)
