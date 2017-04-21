@@ -476,7 +476,7 @@ main(int argc, char ** argv)
 		    break;
 	case 'x':   extract_archive = 1;
 		    break;
-	case 'V':   fprintf(stderr, "%M% %I%\n");
+	case 'V':   puts(xrpm_version);
 		    exit(0);
 	default:
 	case 'h':

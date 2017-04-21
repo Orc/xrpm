@@ -48,6 +48,8 @@ test "$OS_FREEBSD" || AC_CHECK_HEADERS malloc.h
 AC_CHECK_FUNCS	tell
 AC_SCALAR_TYPES
 
+AC_SUB VERSION `cat VERSION`
+
 AC_CHECK_FIELD utsname domainname sys/utsname.h
 
 AC_OUTPUT Makefile xrpm.build

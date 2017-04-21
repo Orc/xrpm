@@ -190,4 +190,6 @@ struct rpm_info_header {
 } ;
 
 
+extern char xrpm_version[];
+
 #endif/*_XRPM_D*/

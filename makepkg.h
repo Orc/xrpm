@@ -71,4 +71,8 @@ struct info {
     char *install;	/* [INSTALL] section */
     char *uninstall;	/* [UNINSTALL] section */
 };
+
+
+extern char xrpm_version[];
+
 #endif/*MAKEPKG_D*/

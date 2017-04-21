@@ -2,12 +2,12 @@ LIBES=@LIBS@
 CFLAGS=@CFLAGS@
 LFLAGS=@LDFLAGS@
 CC=@CC@
-LIBOBJ=rpmarchnames.o rpmosnames.o rpmsignames.o rpmtagnames.o cpio_wr.o
+LIBOBJ=rpmarchnames.o rpmosnames.o rpmsignames.o rpmtagnames.o cpio_wr.o version.o
 
 all:	xrpm makepkg
 
 clean:
-	rm -f makepkg xrpm *.o core xrpm.a
+	rm -f makepkg xrpm *.o core xrpm.a version.c
 
 distclean spotless: clean
 	@DISTCLEAN@ @CONFIGURE_FILES@ @GENERATED_FILES@
@@ -35,6 +35,9 @@ xrpm:	xrpm.o xrpm.a @OPTIONS@
 test:	xrpm
 	@cd tests ; ./doit
 
+version.c:  VERSION
+	echo 'char xrpm_version[] ="'`cat VERSION`'";' > version.c
+
 cpio_wr.o: cpio_wr.c pax.h cpio_wr.h makepkg.h config.h
 makepkg.o: makepkg.c makepkg.h xrpm.h mapping.h config.h
 rpmarchnames.o: rpmarchnames.c mapping.h
@@ -42,3 +45,4 @@ rpmosnames.o: rpmosnames.c mapping.h
 rpmsignames.o: rpmsignames.c
 rpmtagnames.o: rpmtagnames.c
 xrpm.o: xrpm.c xrpm.h mapping.h config.h
+version.o: version.c

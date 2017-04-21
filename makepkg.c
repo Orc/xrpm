@@ -80,21 +80,28 @@ static char cache[512];
 static int iscached = 0;
 
 /*
+ * the [BUILD] section, if any
+ */
+static char *build;
+
+/*
  * package sections
  */
-enum { PACKAGE, DESCRIPTION, NEEDS, PREINSTALL, INSTALL, UNINSTALL, FILES };
+enum { PACKAGE, DESCRIPTION, NEEDS, BUILD, PREINSTALL, INSTALL, UNINSTALL, FILES };
 
 struct sections {
     char *name;
     int section;
+    int showme;
 } sections [] = {
-    { "[PACKAGE]",	PACKAGE },
-    { "[DESCRIPTION]",	DESCRIPTION },
-    { "[NEEDS]",	NEEDS },
-    { "[PREINSTALL]",	PREINSTALL },
-    { "[INSTALL]",	INSTALL },
-    { "[FILES]",	FILES },
-    { "[UNINSTALL]",	UNINSTALL },
+    { "[PACKAGE]",	PACKAGE,     0 },
+    { "[DESCRIPTION]",	DESCRIPTION, 0 },
+    { "[NEEDS]",	NEEDS,       0 },
+    { "[PREINSTALL]",	PREINSTALL,  0 },
+    { "[INSTALL]",	INSTALL,     0 },
+    { "[FILES]",	FILES,       0 },
+    { "[UNINSTALL]",	UNINSTALL,   0 },
+    { "[BUILD]",	BUILD,       0 },
 };
 #define NRSECTIONS	(sizeof sections/sizeof sections[0])
 
@@ -773,11 +780,12 @@ checkreq(char** errstr, char* candidate, char* name)
  * commandline options
  */
 struct x_option options[] = {
-    { 'v', 'v', "verbose", 0, "Be chattery while we're making the package" },
-    { 'h', 'h', "help",    0, "Give this message" },
-    { 'V', 'V', "version", 0, "Give the current version number, then exit" },
-    { 'o', 'o', "show-os", 0, "Show the supported operating systems" },
+    { 'v', 'v', "verbose",   0, "Be chattery while we're making the package" },
+    { 'h', 'h', "help",      0, "Give this message" },
+    { 'V', 'V', "version",   0, "Give the current version number, then exit" },
+    { 'o', 'o', "show-os",   0, "Show the supported operating systems" },
     { 'a', 'a', "show-arch", 0, "Show the supported computer architectures" },
+    { 'b', 'b', "build",     0, "Execute the [BUILD] section, if it exists" },
 } ;
 #  define NROPTIONS	(sizeof options / sizeof options[0])
 #  define GETOPT(ac,av)	x_getopt(ac,av,NROPTIONS,options)
@@ -819,6 +827,7 @@ main(int argc, char **argv)
     int needtomove = 0;
     int showarch=0;
     int showos=0;
+    int build_it=0;
     int sectionid;
     char *missing = 0;
     int opt;
@@ -831,7 +840,7 @@ main(int argc, char **argv)
 		break;
 
 	case 'V':
-		puts("%M% %I%");
+		puts(xrpm_version);
 		exit(0);
 
 	case 'o':
@@ -842,6 +851,10 @@ main(int argc, char **argv)
 		showmaps(archmap, nrarchmap, "Supported architectures");
 		exit (0);
 
+	case 'b':
+		build_it++;
+		break;
+		
 	default:
 		fprintf(stderr, "usage: makepkg [options] [command-file]\n\n");
 		showopts(stderr, NROPTIONS, options);
@@ -889,6 +902,8 @@ main(int argc, char **argv)
 			break;
 	case UNINSTALL:	info.uninstall = getstring();
 			break;
+	case BUILD:	build = getstring();
+			break;
 	case FILES:	file_section(&info);
 			break;
 	}
@@ -897,6 +912,12 @@ main(int argc, char **argv)
 
     if (info.nrfile < 1)
 	error("package contains no files");
+
+
+    if ( build_it && build ) {
+	puts(build);
+	exit(0);
+    }
 
     checkreq(&missing, info.name, "name");
     checkreq(&missing, info.version, "version");
