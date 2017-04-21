@@ -1,0 +1,83 @@
+#! /bin/sh
+
+
+trap "rm -rf tc$$" 1 2 3 9 15
+
+
+checkchecksums () {
+    (   cd $1
+	while read chksum element;do
+	    if [ ! -e "$element" ]; then
+		echo 1>&2 "$file: $element does not exist"
+		return 1
+	    fi
+	    newsum=`$CHK < "$element" 2>/dev/null | awk '{print $1}'`
+
+	    if [ "$newsum" != "$chksum" ]; then
+	        echo 1>&2 "$file: $element: incorrect checksum ($chksum/$newsum)"
+		return 1
+	    fi
+	    rm "$element"
+	done
+	leftover=`find . ! -type d -print`
+	if [ -n "$leftover" ] ;then
+	    echo 1>&2 "$file: contains additional elements $leftover"
+	    return 1
+	fi
+	return 0 )
+    return $?
+}
+
+#
+# test files are
+#  line 1: test flags
+#  line 2: test file
+#  line 3-$:   file checksum
+#
+runtest() {
+    (
+	trap "rm -rf test$$" 1 2 3 9 15
+	
+	local uuencoded
+	local options=''
+	
+	read file
+
+	case X"$file" in
+	X-*)options=$file
+	    read file ;;
+	esac
+
+
+	rm -rf test$$
+	mkdir test$$
+
+	local res=1
+	if ../xrpm -qx $options -b test$$ < $file ; then
+	    checkchecksums test$$
+	    res=$?
+	fi
+	rm -rf test$$
+	
+	if [ "$res" -eq 0 ]; then
+	    echo "${file}: ok"
+	fi
+	return $res
+    ) < $x
+    return $?
+}
+
+
+if md5 </dev/null >/dev/null 2>/dev/null ; then
+    CHK=md5
+elif md5sum </dev/null >/dev/null 2>/dev/null ; then
+    CHK=md5sum
+else
+    echo 1>&2 "no md5/md5sum program on this machine?"
+    exit 1
+fi
+
+for x in *.t; do
+    test -r $x && runtest $x || exit 1
+done
+exit 0

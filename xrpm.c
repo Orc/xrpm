@@ -389,6 +389,7 @@ get_string_field(int tag, struct rpm_info_header *sb)
  */
 struct x_option options[] = {
     { 'a', 'a', "all",		0,	"Display all package information" },
+    { 'b', 'b', "buildroot",   "DIR",   "extract to DIR" },
     { 'i', 'i', "package-header",0,	"Display the package header" },
     { 's', 's', "signature", 	0,	"Display the package signature" },
     { 'p', 'p', "package-info",	0,	"Display the package info database" },
@@ -429,6 +430,7 @@ main(int argc, char ** argv)
     long pos;
     int opt;
     char *p, *decompress, *cpio_cmd;
+    char *build_root = 0;
 
     int show_header = 0;
     int show_signature = 0;
@@ -462,6 +464,8 @@ main(int argc, char ** argv)
 	case 't':   list_archive = 1;
 		    break;
 	case 'd':   dump_archive = 1;
+		    break;
+	case 'b':   build_root = OPTARG;
 		    break;
 	case 'l':   {   int j;
 			for (j=0; j < nrrpmtagnames; j++)
@@ -595,6 +599,10 @@ main(int argc, char ** argv)
 	system(cpio_cmd);
     }
     else if (extract_archive) {
+	if ( build_root && chdir(build_root) != 0 ) {
+	    perror(build_root);
+	    exit(2);
+	}
 	sprintf(cpio_cmd, "%s | cpio -i%sdmu", decompress, quieter ? "" : "v");
 	system(cpio_cmd);
     }

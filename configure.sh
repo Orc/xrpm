@@ -50,4 +50,4 @@ AC_SCALAR_TYPES
 
 AC_CHECK_FIELD utsname domainname sys/utsname.h
 
-AC_OUTPUT Makefile
+AC_OUTPUT Makefile xrpm.build

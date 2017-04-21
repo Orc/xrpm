@@ -1,18 +1,13 @@
 [package]
 
     NAME="xrpm"
-    VERSION="0.0"
+    VERSION="@VERSION@"
     AUTHOR="orc@pell.portland.or.us"
     DISTRIBUTION="Mastodon"
     SUMMARY="RPM generation/extraction tools"
     URL="http://www.pell.portland.or.us/~orc/Code/xrpm"
     COPYRIGHT="BSD"
     ARCH=Eniac
-
-
-[needs]
-
-    libc.so.4
 
 [description]
 
@@ -24,9 +19,13 @@
 
 ; binaries
 ;
-makepkg		=> /usr/local/bin/makepkg
-xrpm   		=> /usr/local/bin/xprm
+makepkg		=> .@bindir@/makepkg
+xrpm   		=> .@bindir@/xprm
 
 ; manpages
 ;
-makepkg.1	=> /usr/local/man/man1/makepkg.1
+makepkg.1	=> .@mandir@/man1/makepkg.1
+
+[build]
+
+./configure.sh --prefix=@prefix@ && make

@@ -32,6 +32,9 @@ makepkg: makepkg.o xrpm.a @OPTIONS@
 xrpm:	xrpm.o xrpm.a @OPTIONS@
 	$(CC) -o xrpm $(CFLAGS) $(LFLAGS) xrpm.o xrpm.a $(LIBES) @OPTIONS@
 
+test:	xrpm
+	@cd tests ; ./doit
+
 cpio_wr.o: cpio_wr.c pax.h cpio_wr.h makepkg.h config.h
 makepkg.o: makepkg.c makepkg.h xrpm.h mapping.h config.h
 rpmarchnames.o: rpmarchnames.c mapping.h
