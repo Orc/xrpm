@@ -49,6 +49,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <time.h>
 
 #if HAVE_ERRNO_H
 #   include <errno.h>
@@ -687,8 +688,8 @@ makeheader(struct info *info)
     write(1, ino, ntohl(sb.nritems) * sizeof ino[0]);
     write(1, data, ntohl(sb.size));
     if (verbose)
-	fprintf(stderr, "header: %d bytes\n",
-			sizeof sb + (ntohl(sb.nritems) * sizeof ino[0]) + ntohl(sb.size));
+	fprintf(stderr, "header: %ld bytes\n",
+	    sizeof sb + (ntohl(sb.nritems) * sizeof ino[0]) + ntohl(sb.size));
 } /* makeheader */
 
 
@@ -730,13 +731,14 @@ writepackage(struct info *info)
 	if (status == 0) /* need to copy the file contents */ {
 	    if ((fd = open(info->file[x].name, O_RDONLY)) != EOF) {
 
-		if (verbose)
+		if (verbose) {
 		    if (strcmp(info->file[x].name, info->file[x].dest) != 0)
 			fprintf(stderr, "packaging %s as %s\n",
 				info->file[x].name, info->file[x].dest);
 		    else
 			fprintf(stderr, "packaging %s\n",
 				info->file[x].dest);
+		}
 
 		while ((sz = read(fd, blk, sizeof blk)) > 0)
 		    push(io[1], blk, sz);
@@ -805,11 +807,12 @@ showmaps(struct mapping *map, int nrmap, char* desc)
     printf("\n%s\n", desc);
 
     for (ix = 0; ix < nrmap; ix++) {
-	if (val != map[ix].number)
+	if (val != map[ix].number) {
 	    if (map[ix].desc)
 		printf("\n%s:", map[ix].desc);
 	    else
 		putchar('\n');
+	}
 	printf(" %s", map[ix].name);
 	val = map[ix].number;
     }
@@ -943,13 +946,14 @@ main(int argc, char **argv)
     /* populate destination file names */
     for (x = 0; x < info.nrfile; x++) {
 	needtomove |= info.file[x].tobemoved;
-	if (info.file[x].dest == 0)
+	if (info.file[x].dest == 0) {
 	    if (info.prefix) {
 		info.file[x].dest = malloc(strlen(info.prefix) + strlen(info.file[x].name) + 2);
 		sprintf(info.file[x].dest, "%s/%s", info.prefix, info.file[x].name);
 	    }
 	    else
 		info.file[x].dest = info.file[x].name;
+	}
     }
 
     makeheader(&info);
@@ -977,11 +981,13 @@ main(int argc, char **argv)
 
 	fprintf(stderr, "files       = [\n");
 	for (x=0; x < info.nrfile; x++) {
-	    fprintf(stderr, "       %s, uid=%u, gid=%u, mode=%u, size=%lu, mtime=%d\n",
-		    info.file[x].dest,
-		    info.file[x].st.st_uid, info.file[x].st.st_gid,
-		    info.file[x].st.st_mode, info.file[x].st.st_size,
-		    info.file[x].st.st_mtime);
+	    fprintf(stderr, "       %s, uid=%u, gid=%u, mode=%u, size=%lu, mtime=%ld\n",
+		    (int)(info.file[x].dest),
+		    (int)(info.file[x].st.st_uid),
+		    (int)(info.file[x].st.st_gid),
+		    (int)(info.file[x].st.st_mode),
+		    (long)(info.file[x].st.st_size),
+		    (long)(info.file[x].st.st_mtime));
 	}
 	fprintf(stderr, "              ]\n");
     }
