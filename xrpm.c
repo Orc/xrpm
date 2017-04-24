@@ -267,12 +267,11 @@ display_field(struct rpm_info *inode, BYTE *data, char *iname, int inum)
 		    data += 2;
 		    break;
 	case RI_32BIT:
-		    printf("%d: %lu\n", i, (long)ntohl(*((DWORD*)data)));
+		    printf("%d: %u\n", i, ntohl(*((DWORD*)data)));
 		    data += 4;
 		    break;
 	case RI_64BIT:
-		    printf("%d: %lu %lu\n", i, (long)ntohl(*((DWORD*)data)),
-					       (long)ntohl(*((DWORD*)(data+4))));
+		    printf("%d: %lu %lu\n", i, ntohl(*((DWORD*)data)), ntohl(*((DWORD*)(data+4))));
 		    data += 8;
 		    break;
 	case RI_STRING:
@@ -324,8 +323,7 @@ displayheaderblock(struct rpm_info_header *sb,
 	printf("header\n"
 	       "------\n"
 	       "nritems:   %ld\n"
-	       "data size: %lu\n", (long)sb->super.nritems,
-				   (long)sb->super.size);
+	       "data size: %lu\n", sb->super.nritems, sb->super.size);
 	puts("----");
     }
 
@@ -379,7 +377,7 @@ get_string_field(int tag, struct rpm_info_header *sb)
 
 	    /*fprintf(stderr, "here it is [%s]\n", sb->data + sb->ino[i].offset);*/
 
-	    return (char*) (sb->data + sb->ino[i].offset);
+	    return sb->data + sb->ino[i].offset;
 	}
     }
     return 0;
@@ -506,7 +504,7 @@ main(int argc, char ** argv)
     }
 
     if (hdr.magic != MAGIC) {
-	printf("Not a rpm file (magic %lx vs %lx)\n", (long)hdr.magic, (long)MAGIC);
+	printf("Not a rpm file (magic %lx vs %lx)\n", hdr.magic, MAGIC);
 	exit(1);
     }
 

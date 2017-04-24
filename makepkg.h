@@ -33,7 +33,7 @@
  *  THE POSSIBILITY OF SUCH DAMAGE.
  */
 #ifndef _MAKEPKG_D
-#define _MAKEPKG_D
+#define _MAKGPKG_D
 /*
  * file information, for installation sanity checks.
  */
