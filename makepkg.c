@@ -683,16 +683,16 @@ write_package_header(int f, struct info *info)
 
     hdr.archnum = htons(info->arch_k);
     hdr.osnum = htons(info->os_k);
-    strcpy(hdr.name, info->name);
+    snprintf(hdr.name, sizeof hdr.name, "%s-%s", info->name, info->version);
     hdr.signature_type = htons(5);	/* signature block */
-    rpm_write(f, &hdr, sizeof hdr);
+    write(f, &hdr, sizeof hdr);
 } /* write_package_header */
 
 
 /*
- * finally, the procedure that generates the header
+ * finally, the procedure that generates & writes the payload header
  */
-char *
+void
 write_payload_header(int f, struct info *info)
 {
     char scratch[200];
