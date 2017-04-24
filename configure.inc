@@ -1706,8 +1706,6 @@ AC_SUB() {
     _target="$1"
     shift
 
-    echo "target=$_target, rest=$*"
-    
     __ac_config_sed
     ./config.sed "$_target" "$*" >> "$__cwd"/config.sub
 }

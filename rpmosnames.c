@@ -14,6 +14,7 @@ struct mapping osmap[] = {
     { "FreeBSD", 5 },		/* All the BSDs */
     { "NetBSD", 6 },
     { "OpenBSD", 7 },
+    { "Darwin",  8 },
 } ;
 
 int nrosmap = (sizeof osmap / sizeof osmap[0]);

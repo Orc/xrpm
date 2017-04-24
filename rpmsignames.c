@@ -4,8 +4,17 @@
  */
 char *rpmsignames[]	= {
     "Size",
-    "MD5",
+    0,
     "PGP",
+    0,
+    "MD5",
+    "GPG",
+    "Payload",
+    0,
+    0,
+    "sha1",
+    "dsa",
+    "rsa",
 } ;
 
 int nrrpmsignames = (sizeof rpmsignames / sizeof rpmsignames[0]);

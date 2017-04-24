@@ -71,7 +71,7 @@ push(int fd, char* bfr, int buflen)
 {
     int sz;
 
-    sz = write(fd, bfr, buflen);
+    sz = rpm_write(fd, bfr, buflen);
     if (sz < buflen)
 	return -1;
     cur_archive_pos += sz;

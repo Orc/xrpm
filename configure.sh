@@ -15,9 +15,7 @@ if [ "IS_BROKEN_CC" ]; then
 	AC_DEFINE 'while(x)' 'while( (x) != 0 )'
 	AC_DEFINE 'if(x)' 'if( (x) != 0 )'
 
-	if [ "$IS_CLANG" ]; then
-	    AC_CC="$AC_CC -Wno-implicit-int"
-	elif [ "$IS_GCC" ]; then
+	if [ "$IS_CLANG" -o "$IS_GCC" ]; then
 	    AC_CC="$AC_CC -Wno-return-type -Wno-implicit-int"
 	fi ;;
     esac
@@ -45,8 +43,10 @@ fi
 
 AC_CHECK_HEADERS errno.h
 test "$OS_FREEBSD" || AC_CHECK_HEADERS malloc.h
-AC_CHECK_FUNCS	tell
+AC_CHECK_FUNCS	tell || AC_DEFINE 'tell(x)' 'lseek(x,0,SEEK_CUR)'
 AC_SCALAR_TYPES
+
+AC_CHECK_FUNCS mkstemp
 
 AC_SUB VERSION `cat VERSION`
 

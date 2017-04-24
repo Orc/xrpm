@@ -50,6 +50,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <time.h>
+#include <signal.h>
 
 #if HAVE_ERRNO_H
 #   include <errno.h>
@@ -60,6 +61,7 @@
 #include "makepkg.h"
 #include "xrpm.h"
 #include "mapping.h"
+#include "md5.h"
 
 extern struct mapping osmap[];
 extern int          nrosmap;
@@ -105,6 +107,64 @@ struct sections {
     { "[BUILD]",	BUILD,       0 },
 };
 #define NRSECTIONS	(sizeof sections/sizeof sections[0])
+
+
+/*
+ * the rpm-in-progress is written to this file, which is discarded
+ * when the program exits
+ */
+char *workfile = 0;
+
+
+/*
+ * poof() removes the workfile if we're interrupted or hupped
+ */
+void
+poof(int sig)
+{
+    if ( workfile )
+	unlink(workfile);
+}
+
+
+/*
+ * catch_sigs() sets poof() as the exit handler for unexpected exits
+ */
+void
+catch_sigs()
+{
+    signal(SIGHUP,  poof);
+    signal(SIGINT,  poof);
+    signal(SIGQUIT, poof);
+#ifdef SIGABRT
+    signal(SIGABRT, poof);
+#elif defined(SIGIOT)
+    signal(SIGIOT,  poof);
+#endif
+    signal(SIGPIPE, poof);
+    signal(SIGSYS,  poof);
+    signal(SIGSEGV, poof);
+    signal(SIGTERM, poof);
+}
+
+
+/*
+ * the md5 checksum (required in rpm 5+ signature headers)
+ */
+static MD5_CTX checksum;
+
+
+/*
+ * rpm_write() a block of text, checksumming it as we go along
+ */
+size_t
+rpm_write(int fd, void *bfr, size_t size)
+{
+    MD5_Update(&checksum, bfr, size);
+
+    return write(fd, bfr, size);
+} /* rpm_write */
+
 
 /*
  * error() spits out an error message
@@ -354,10 +414,10 @@ file_section(struct info* info)
 {
     char *p;
     char *to;
-    struct stat st;
+    int szfile;
 
     info->file = malloc(1);
-    info->nrfile = 0;
+    szfile = info->nrfile = 0;
 
     while ((p = getsectionline()) != 0) {
 	if ((p = eatspace(p)) == 0)
@@ -383,25 +443,38 @@ file_section(struct info* info)
 	    }
 	}
 
-	if (lstat(p, &st) == 0) {
-	    info->file = realloc(info->file, sizeof(info->file[0]) * (20+info->nrfile));
-	    info->file[info->nrfile].name = strdup(p);
-	    if (to) {
-		info->file[info->nrfile].tobemoved = 1;
-		info->file[info->nrfile].dest = strdup(to);
-	    }
-	    else {
-		info->file[info->nrfile].dest = 0;
-		info->file[info->nrfile].tobemoved = 0;
-	    }
-
-	    info->file[info->nrfile].st = st;
-	    info->nrfile++;
+	if ( info->nrfile >= szfile ) {
+	    szfile = 1+(info->nrfile * 2);
+	    info->file = realloc(info->file, sizeof(info->file[0]) * szfile);
 	}
-	else
-	    error("cannot pack nonexistant file %s\n", p);
+	info->file[info->nrfile].name = strdup(p);
+	if (to) {
+	    info->file[info->nrfile].tobemoved = 1;
+	    info->file[info->nrfile].dest = strdup(to);
+	}
+	else {
+	    info->file[info->nrfile].dest = 0;
+	    info->file[info->nrfile].tobemoved = 0;
+	}
+
+	info->nrfile++;
     }
 } /* file_section */
+
+
+
+/*
+ * validate_file_section() checks to see if all the files exist,
+ */
+validate_file_section(struct info *info)
+{
+    int i;
+
+    for ( i=0; i < info->nrfile; i++ )
+	if ( lstat(info->file[i].name, &info->file[i].st) != 0 )
+	    error("cannot pack nonexistant file %s\n", info->file[i].name);
+
+} /* validate_file_section */
 
 
 /*
@@ -411,6 +484,24 @@ static struct rpm_header hdr;
 static struct rpm_super sb;
 static struct rpm_info *ino;
 static char *data;
+
+
+/*
+ * populate_header() initializes an rpm header
+ */
+void
+populate_header(struct rpm_header *h, struct info *info)
+{
+    h->magic = MAGIC;
+    h->major = 2;
+    h->minor = 0;
+    h->type  = 0;
+
+    h->archnum = htons(info->arch_k);
+    h->osnum = htons(info->os_k);
+    strcpy(h->name, info->name);
+    h->signature_type = htons(5);	/* signature block */
+}
 
 
 /*
@@ -427,7 +518,24 @@ datastring(char *string)
     strcpy(data + offset, string);
 
     return offset;
-} /* datastring */
+} /* datastring*/
+
+
+/*
+ * add a fixed-length string to the info block, returning the offset to it
+ */
+int
+databinary(char *string, int size)
+{
+    int offset = sb.size;
+
+    sb.size += size;
+    data = realloc(data, sb.size);
+
+    memcpy(data + offset, string, size);
+
+    return offset;
+} /* binary */
 
 
 /*
@@ -519,6 +627,16 @@ addstring(short tag, char* string)
 
 
 /*
+ * add a fixed-length string to the rpm_info array
+ */
+addbinary(short tag, char *string, int size)
+{
+    int x = newino(tag, RI_BINARY, size);
+    ino[x].offset = htonl(databinary(string, size));
+} /* addbinary */
+
+
+/*
  * add an 8-bit quantity to the rpm_info array
  */
 add8bit(short tag, char value)
@@ -541,51 +659,57 @@ add32bit(short tag, unsigned long value)
     ino[x].offset = htonl(data32bit(value));
 } /* add32bit */
 
+
+/*
+ * write_checksum() writes the checksum block
+ */
+void
+write_checksum(int f, size_t size, unsigned char *md5sum, struct info *info)
+{
+    struct rpm_header checksum;
+    int i;
+
+    memset(&checksum, 0, sizeof checksum);
+    memset(&sb, 0, sizeof sb);
+    
+    populate_header(&checksum, info);
+    
+    add32bit(1000, size);
+    addbinary(1004,md5sum,16);
+
+    sb.nritems = htonl(sb.nritems);
+    sb.size = htonl(sb.size);
+    write(f, &sb, sizeof sb);
+    write(f, ino, ntohl(sb.nritems) * sizeof ino[0]);
+    write(f, data, ntohl(sb.size));
+    if (verbose)
+	fprintf(stderr, "checksum: %ld bytes\n",
+	    sizeof sb + (ntohl(sb.nritems) * sizeof ino[0]) + ntohl(sb.size));
+} /* write_checksum */
+
+
 /*
  * finally, the procedure that generates the header
  */
 char *
-makeheader(struct info *info)
+makeheader(int f, struct info *info, size_t *checksum_at)
 {
     char scratch[200];
     int x;
-    int os=EOF,
-	arch=EOF;
     time_t now;
 
     /* allocate the parts of the header */
-    memset(&sb, 0, sizeof sb);
-    memset(&hdr, 0, sizeof hdr);
     ino = malloc(1);
 
     /* populate the rpm header */
-    hdr.magic = MAGIC;
-    hdr.major = 2;
-    hdr.minor = 0;
-    hdr.type  = 0;
-    for (x = 0; x < nrosmap; x++)
-	if (strcasecmp(info->os, osmap[x].name) == 0) {
-	    os = osmap[x].number;
-	    break;
-	}
-    for (x = 0; x < nrarchmap; x++)
-	if (strcasecmp(info->arch, archmap[x].name) == 0) {
-	    arch = archmap[x].number;
-	    break;
-	}
+    memset(&hdr, 0, sizeof hdr);
+    populate_header(&hdr, info);
+    rpm_write(f, &hdr, sizeof hdr);
 
-    if (os < 0)
-	error("unknown os %s", info->os);
-    if (arch < 0)
-	error("unknown architecture %s", info->arch);
-    if (errors)
-	exit(1);
+    *checksum_at = tell(f);
+    write_checksum(f, 0, "123456789ABCDEF", info);
 
-    hdr.archnum = htons(arch);
-    hdr.osnum = htons(os);
-    strcpy(hdr.name, info->name);
-    hdr.signature_type = 0;	/* no signatures */
-
+    memset(&sb, 0, sizeof sb);
     /* add all single-valued tags
      */
     addstring(RPMTAG_NAME, info->name);
@@ -606,8 +730,8 @@ makeheader(struct info *info)
 	addstring(RPMTAG_DISTRIBUTION, info->distribution);
     addstring(RPMTAG_VENDOR, info->author);
     addstring(RPMTAG_COPYRIGHT, info->copyright);
-    add8bit(RPMTAG_OS, os);
-    add8bit(RPMTAG_ARCH, arch);
+    add8bit(RPMTAG_OS, info->os_k);
+    add8bit(RPMTAG_ARCH, info->arch_k);
 
     if (info->preinstall)
 	addstring(RPMTAG_PREIN, info->preinstall);
@@ -677,16 +801,19 @@ makeheader(struct info *info)
     /* after everything else, write out the packager version.  I'll bet
      * that the reference implementation will fail on this.
      */
-    addstring(RPMTAG_RPMVERSION, "makepkg $Revision: 1.14 $");
+    {   char *p = alloca(strlen("makepkg ") + strlen(xrpm_version) + 1);
+	sprintf(p, "makepkg %s", xrpm_version);
+	addstring(RPMTAG_RPMVERSION, p);
+    }
 
     /* write out the completed header
      */
-    write(1, &hdr, sizeof hdr);
     sb.nritems = htonl(sb.nritems);
     sb.size = htonl(sb.size);
-    write(1, &sb, sizeof sb);
-    write(1, ino, ntohl(sb.nritems) * sizeof ino[0]);
-    write(1, data, ntohl(sb.size));
+
+    rpm_write(f, &sb, sizeof sb);
+    rpm_write(f, ino, ntohl(sb.nritems) * sizeof ino[0]);
+    rpm_write(f, data, ntohl(sb.size));
     if (verbose)
 	fprintf(stderr, "header: %ld bytes\n",
 	    sizeof sb + (ntohl(sb.nritems) * sizeof ino[0]) + ntohl(sb.size));
@@ -694,10 +821,10 @@ makeheader(struct info *info)
 
 
 /*
- * writepackage() writes all the files (properly translated) into the archive
+ * writepayload() writes all the files (properly translated) into the archive
  */
 void
-writepackage(struct info *info)
+writepayload(int f, struct info *info)
 {
     int x;		/* index */
     int status;		/* vcpio_wr() status; do we want to write this file? */
@@ -715,6 +842,8 @@ writepackage(struct info *info)
     if ((child = fork()) == 0) {
 	close(0);
 	dup(io[0]);
+	close(1);
+	dup(f);
 	close(io[1]);
 	execlp("gzip","gzip", 0);
 	error("cannot execute gzip");
@@ -756,7 +885,7 @@ writepackage(struct info *info)
     cpio_endwr(io[1]);
     close(io[1]);
     wait(&status);
-} /* writepackage */
+} /* writepayload */
 
 
 /*
@@ -778,6 +907,37 @@ checkreq(char** errstr, char* candidate, char* name)
 } /* checkreq */
 
 
+
+/*
+ * which_os_am_I() tries to map the os & arch strings to integer values.
+ */
+void
+which_os_am_I(struct info *info)
+{
+    int i;
+
+    info->os_k = info->arch_k = -1;
+    
+    for (i = 0; i < nrosmap; i++)
+	if (strcasecmp(info->os, osmap[i].name) == 0) {
+	    info->os_k = osmap[i].number;
+	    break;
+	}
+    for (i = 0; i < nrarchmap; i++)
+	if (strcasecmp(info->arch, archmap[i].name) == 0) {
+	    info->arch_k = archmap[i].number;
+	    break;
+	}
+
+    if (info->os_k < 0)
+	error("unknown os %s", info->os);
+    if (info->arch_k < 0)
+	error("unknown architecture %s", info->arch);
+    if (errors)
+	exit(1);
+}
+
+
 /* 
  * commandline options
  */
@@ -788,6 +948,7 @@ struct x_option options[] = {
     { 'o', 'o', "show-os",   0, "Show the supported operating systems" },
     { 'a', 'a', "show-arch", 0, "Show the supported computer architectures" },
     { 'b', 'b', "build",     0, "Execute the [BUILD] section, if it exists" },
+    { 'w', 'w', "write", "FILE","Write the rpm to FILE" },
 } ;
 #  define NROPTIONS	(sizeof options / sizeof options[0])
 #  define GETOPT(ac,av)	x_getopt(ac,av,NROPTIONS,options)
@@ -826,6 +987,7 @@ main(int argc, char **argv)
 {
     struct info info;
     char *p;
+    int f;
     int x;
     int needtomove = 0;
     int showarch=0;
@@ -834,6 +996,10 @@ main(int argc, char **argv)
     int sectionid;
     char *missing = 0;
     int opt;
+    char *output;
+    unsigned char md5sum[16];
+    size_t offset_to_checksum;
+    size_t size_of_package;
 
     OPTERR = 1;
     while  ((opt = GETOPT(argc, argv)) != EOF) {
@@ -858,6 +1024,10 @@ main(int argc, char **argv)
 		build_it++;
 		break;
 		
+	case 'w':
+		output = OPTARG;
+		break;
+
 	default:
 		fprintf(stderr, "usage: makepkg [options] [command-file]\n\n");
 		showopts(stderr, NROPTIONS, options);
@@ -918,9 +1088,31 @@ main(int argc, char **argv)
 
 
     if ( build_it && build ) {
-	puts(build);
-	exit(0);
+	pid_t runner;
+	int status;
+	int rc;
+
+	if ( (runner = fork()) == 0 ) {
+	    close(1);
+	    dup2(2, 1);
+	    setenv("BUILDROOT", getwd(0), 1);
+	    execl("/bin/sh", "sh", "-c", build, 0);
+	}
+	else if ( runner > 0 ) {
+	    waitpid(runner, &status, 0);
+
+	    rc = WIFEXITED(status) ? WEXITSTATUS(status) : 255;
+
+	    if ( rc != 0 )
+		exit(1);
+	}
+	else {
+	    perror("--build");
+	    exit(1);
+	}
     }
+
+    validate_file_section(&info);
 
     checkreq(&missing, info.name, "name");
     checkreq(&missing, info.version, "version");
@@ -942,6 +1134,7 @@ main(int argc, char **argv)
 	info.os = strdup(SystemInfo.sysname);
     if (info.arch == 0)
 	info.arch= strdup(SystemInfo.machine);
+    which_os_am_I(&info);
 
     /* populate destination file names */
     for (x = 0; x < info.nrfile; x++) {
@@ -956,8 +1149,72 @@ main(int argc, char **argv)
 	}
     }
 
-    makeheader(&info);
-    writepackage(&info);
+
+    /* write to a tempfile, then either rename the file or cat it
+     * to stdout -- we need to write to a tempfile so we can seek
+     * back to the signature block and fill it out after writing
+     * the payload.
+     */
+#define TEMPLATE ".mp.XXXXXX"
+    if ( output ) {
+	/* output file:  make a tempfile in the same directory,
+	 * then rename it when we're done/
+	 */
+	workfile = alloca(strlen(output) + strlen(TEMPLATE) + 2);
+	strcpy(workfile, output);
+	if ( p = strrchr(workfile, '/') )
+	    ++p;
+	else
+	    p = workfile;
+	strcpy(p, TEMPLATE);
+    }
+    else {
+	workfile = alloca(strlen("/tmp/" TEMPLATE)+1);
+	strcpy(workfile, "/tmp/" TEMPLATE);
+    }
+
+#if HAVE_MKSTEMP
+    f = mkstemp(workfile);
+#else
+    mktemp(workfile);
+    f = open(workfile, O_RDWR|O_EXCL, S_IRUSR|S_IWUSR);
+#endif
+
+    if ( f == -1 ) {
+	perror(workfile);
+	exit(1);
+    }
+
+    catch_sigs();
+	
+    MD5_Init(&checksum);
+    makeheader(f, &info, &offset_to_checksum);
+    writepayload(f, &info);
+    MD5_Final(md5sum, &checksum);
+
+    /* rewind back to the location of the checksum, then
+     * write the actual checksum over the placeholder
+     */
+    size_of_package = tell(f);
+    lseek(f, offset_to_checksum, SEEK_SET);
+
+    write_checksum(f, size_of_package, md5sum, &info);
+
+    if ( output ) {
+	close(f);
+	unlink(output);
+	link(workfile, output);
+	unlink(workfile);
+    }
+    else {
+	char block[5120];
+	int size;
+
+	lseek(f, 0L, SEEK_SET);
+
+	while ( (size = read(f, block, sizeof block)) > 0 )
+	    write(1, block, size);
+    }
 
     if (verbose) {
 	fprintf(stderr, "%s, version %s, for %s\n", info.name, info.version, info.distribution);
@@ -982,7 +1239,7 @@ main(int argc, char **argv)
 	fprintf(stderr, "files       = [\n");
 	for (x=0; x < info.nrfile; x++) {
 	    fprintf(stderr, "       %s, uid=%u, gid=%u, mode=%u, size=%lu, mtime=%ld\n",
-		    (int)(info.file[x].dest),
+		    info.file[x].dest,
 		    (int)(info.file[x].st.st_uid),
 		    (int)(info.file[x].st.st_gid),
 		    (int)(info.file[x].st.st_mode),

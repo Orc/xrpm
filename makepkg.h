@@ -60,6 +60,7 @@ struct info {
     char *arch;				/* ARCH= */
     char *copyright;			/* COPYRIGHT= */
     char *distribution;			/* DISTRIBUTION= */
+    int  os_k, arch_k;	/* OS & ARCH converted to integer keys */
     char *description;	/* [DESCRIPTION] section */
     char **supplies;	/* [PROVIDES] section */
     int  nrsupplies;
@@ -74,5 +75,11 @@ struct info {
 
 
 extern char xrpm_version[];
+
+extern int push(int fd, char* bfr, int buflen);
+extern int align(int fd);
+extern long cur_archive_pos;
+
+extern size_t rpm_write(int,void*,size_t);
 
 #endif/*MAKEPKG_D*/

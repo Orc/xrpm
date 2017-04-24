@@ -2,7 +2,8 @@ LIBES=@LIBS@
 CFLAGS=@CFLAGS@
 LFLAGS=@LDFLAGS@
 CC=@CC@
-LIBOBJ=rpmarchnames.o rpmosnames.o rpmsignames.o rpmtagnames.o cpio_wr.o version.o
+LIBOBJ=rpmarchnames.o rpmosnames.o rpmsignames.o rpmtagnames.o \
+       cpio_wr.o md5.o version.o
 
 all:	xrpm makepkg
 
@@ -46,3 +47,4 @@ rpmsignames.o: rpmsignames.c
 rpmtagnames.o: rpmtagnames.c
 xrpm.o: xrpm.c xrpm.h mapping.h config.h
 version.o: version.c
+md5.o: md5.c md5.h

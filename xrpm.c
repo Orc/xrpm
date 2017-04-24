@@ -183,6 +183,7 @@ readheaderblock(struct rpm_header* pkg, int fd, struct rpm_info_header *sb)
     }
     sb->super.nritems = ntohl(superblock.nritems);
     sb->super.size    = ntohl(superblock.size);
+    
     sz = sb->super.nritems * sizeof sb->ino[0];
 
     /* read the ino array, convert fields into native byte order */
@@ -536,11 +537,7 @@ main(int argc, char ** argv)
 	    /* type 5 header blocks are apparently padded out to multiples of
 	     * eight bytes.
 	     */
-#if HAVE_TELL
 	    pos = tell(0);
-#else
-	    pos = lseek(0, 0, SEEK_CUR);
-#endif
 	    if ((pos % 8) != 0) {
 		char filler[8];
 		read(0, filler, 8-(pos % 8));
