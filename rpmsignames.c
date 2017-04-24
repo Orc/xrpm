@@ -9,6 +9,7 @@ char *rpmsignames[]	= {
     0,
     "MD5",
     "GPG",
+    0,
     "Payload",
     0,
     0,

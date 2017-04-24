@@ -150,7 +150,7 @@ catch_sigs()
 
 
 /*
- * the md5 checksum (required in rpm 5+ signature headers)
+ * the md5 checksum (required in rpm 3+ signature headers)
  */
 static MD5_CTX checksum;
 
@@ -648,13 +648,14 @@ add32bit(short tag, unsigned long value)
  * write_checksum() writes the checksum block
  */
 void
-write_checksum(int f, size_t size, unsigned char *md5sum, struct info *info)
+write_checksum(int f, size_t total, size_t payload, unsigned char *md5sum, struct info *info)
 {
     int i;
 
     memset(&sb, 0, sizeof sb);
     
-    add32bit(1000, size);
+    add32bit(1000, total);
+    add32bit(1007, payload);
     addbinary(1004,md5sum,16);
 
     sb.nritems = htonl(sb.nritems);
@@ -990,8 +991,10 @@ main(int argc, char **argv)
     int opt;
     char *output;
     unsigned char md5sum[16];
-    size_t offset_to_checksum;
     size_t size_of_package;
+    size_t offset_to_checksum;
+    size_t offset_to_header;
+    size_t offset_to_payload;
 
     OPTERR = 1;
     while  ((opt = GETOPT(argc, argv)) != EOF) {
@@ -1181,8 +1184,10 @@ main(int argc, char **argv)
     MD5_Init(&checksum);
     write_package_header(f, &info);
     offset_to_checksum = tell(f);
-    write_checksum(f, 0, "0123456789ABCDEF", &info);
+    write_checksum(f, 0, 0, "0123456789ABCDEF", &info);
+    offset_to_header = tell(f);
     write_payload_header(f, &info);
+    offset_to_payload = tell(f);
     write_payload(f, &info);
     MD5_Final(md5sum, &checksum);
 
@@ -1192,7 +1197,8 @@ main(int argc, char **argv)
     size_of_package = tell(f);
     lseek(f, offset_to_checksum, SEEK_SET);
 
-    write_checksum(f, size_of_package, md5sum, &info);
+    write_checksum(f, size_of_package-offset_to_header,
+		      size_of_package-offset_to_payload, md5sum, &info);
 
     if ( output ) {
 	close(f);
