@@ -46,7 +46,7 @@
 #define MAJOR		2
 #define MAGIC		(DWORD)0xDBEEABED
 
-#define SIGHDR_MAGIC	(DWORD)0x01E8AD8E
+#define HDR_MAGIC	(DWORD)0x01E8AD8E
 
 struct rpm_header {
     DWORD magic;
@@ -57,6 +57,11 @@ struct rpm_header {
     WORD osnum;
     WORD signature_type;
     BYTE reserved[16];
+};
+
+struct rpm3_sb_magic {
+    DWORD magic;
+    DWORD rest;
 };
 
 

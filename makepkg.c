@@ -482,27 +482,10 @@ validate_file_section(struct info *info)
  * makeheader() builds up a rpm header from the info block
  */
 static struct rpm_header hdr;
+static struct rpm3_sb_magic sb_magic = { HDR_MAGIC, 0 };
 static struct rpm_super sb;
 static struct rpm_info *ino;
 static char *data;
-
-
-/*
- * populate_header() initializes an rpm header
- */
-void
-populate_header(struct rpm_header *h, struct info *info)
-{
-    h->magic = MAGIC;
-    h->major = 2;
-    h->minor = 0;
-    h->type  = 0;
-
-    h->archnum = htons(info->arch_k);
-    h->osnum = htons(info->os_k);
-    strcpy(h->name, info->name);
-    h->signature_type = htons(5);	/* signature block */
-}
 
 
 /*
@@ -667,19 +650,16 @@ add32bit(short tag, unsigned long value)
 void
 write_checksum(int f, size_t size, unsigned char *md5sum, struct info *info)
 {
-    struct rpm_header checksum;
     int i;
 
-    memset(&checksum, 0, sizeof checksum);
     memset(&sb, 0, sizeof sb);
-    
-    populate_header(&checksum, info);
     
     add32bit(1000, size);
     addbinary(1004,md5sum,16);
 
     sb.nritems = htonl(sb.nritems);
     sb.size = htonl(sb.size);
+    write(f, &sb_magic, sizeof sb_magic);
     write(f, &sb, sizeof sb);
     write(f, ino, ntohl(sb.nritems) * sizeof ino[0]);
     write(f, data, ntohl(sb.size));
@@ -690,10 +670,30 @@ write_checksum(int f, size_t size, unsigned char *md5sum, struct info *info)
 
 
 /*
+ * write_package_header() writes the package header for the whole shebang
+ */
+void
+write_package_header(int f, struct info *info)
+{
+    memset(&hdr, 0, sizeof hdr);
+    hdr.magic = MAGIC;
+    hdr.major = 3;
+    hdr.minor = 0;
+    hdr.type  = 0;
+
+    hdr.archnum = htons(info->arch_k);
+    hdr.osnum = htons(info->os_k);
+    strcpy(hdr.name, info->name);
+    hdr.signature_type = htons(5);	/* signature block */
+    rpm_write(f, &hdr, sizeof hdr);
+} /* write_package_header */
+
+
+/*
  * finally, the procedure that generates the header
  */
 char *
-makeheader(int f, struct info *info, size_t *checksum_at)
+write_payload_header(int f, struct info *info)
 {
     char scratch[200];
     int x;
@@ -701,14 +701,6 @@ makeheader(int f, struct info *info, size_t *checksum_at)
 
     /* allocate the parts of the header */
     ino = malloc(1);
-
-    /* populate the rpm header */
-    memset(&hdr, 0, sizeof hdr);
-    populate_header(&hdr, info);
-    rpm_write(f, &hdr, sizeof hdr);
-
-    *checksum_at = tell(f);
-    write_checksum(f, 0, "123456789ABCDEF", info);
 
     memset(&sb, 0, sizeof sb);
     /* add all single-valued tags
@@ -812,6 +804,7 @@ makeheader(int f, struct info *info, size_t *checksum_at)
     sb.nritems = htonl(sb.nritems);
     sb.size = htonl(sb.size);
 
+    rpm_write(f, &sb_magic, sizeof sb_magic);
     rpm_write(f, &sb, sizeof sb);
     rpm_write(f, ino, ntohl(sb.nritems) * sizeof ino[0]);
     rpm_write(f, data, ntohl(sb.size));
@@ -822,10 +815,10 @@ makeheader(int f, struct info *info, size_t *checksum_at)
 
 
 /*
- * writepayload() writes all the files (properly translated) into the archive
+ * write_payload() writes all the files (properly translated) into the archive
  */
 void
-writepayload(int f, struct info *info)
+write_payload(int f, struct info *info)
 {
     int x;		/* index */
     int status;		/* vcpio_wr() status; do we want to write this file? */
@@ -1186,8 +1179,11 @@ main(int argc, char **argv)
     catch_sigs();
 	
     MD5_Init(&checksum);
-    makeheader(f, &info, &offset_to_checksum);
-    writepayload(f, &info);
+    write_package_header(f, &info);
+    offset_to_checksum = tell(f);
+    write_checksum(f, 0, "0123456789ABCDEF", &info);
+    write_payload_header(f, &info);
+    write_payload(f, &info);
     MD5_Final(md5sum, &checksum);
 
     /* rewind back to the location of the checksum, then
