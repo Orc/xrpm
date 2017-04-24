@@ -993,8 +993,7 @@ main(int argc, char **argv)
     unsigned char md5sum[16];
     size_t size_of_package;
     size_t offset_to_checksum;
-    size_t offset_to_header;
-    size_t offset_to_payload;
+    size_t header_size;
 
     OPTERR = 1;
     while  ((opt = GETOPT(argc, argv)) != EOF) {
@@ -1185,9 +1184,9 @@ main(int argc, char **argv)
     write_package_header(f, &info);
     offset_to_checksum = tell(f);
     write_checksum(f, 0, 0, "0123456789ABCDEF", &info);
-    offset_to_header = tell(f);
+    header_size = tell(f);
     write_payload_header(f, &info);
-    offset_to_payload = tell(f);
+    header_size = tell(f)-header_size;
     write_payload(f, &info);
     MD5_Final(md5sum, &checksum);
 
@@ -1197,8 +1196,7 @@ main(int argc, char **argv)
     size_of_package = tell(f);
     lseek(f, offset_to_checksum, SEEK_SET);
 
-    write_checksum(f, size_of_package-offset_to_header,
-		      size_of_package-offset_to_payload, md5sum, &info);
+    write_checksum(f, header_size+cur_archive_pos, cur_archive_pos, md5sum, &info);
 
     if ( output ) {
 	close(f);
