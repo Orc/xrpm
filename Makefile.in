@@ -2,6 +2,9 @@ LIBES=@LIBS@
 CFLAGS=@CFLAGS@
 LFLAGS=@LDFLAGS@
 CC=@CC@
+BINDIR=$(DESTDIR)@bindir@
+MANDIR=$(DESTDIR)@mandir@
+
 LIBOBJ=rpmarchnames.o rpmosnames.o rpmsignames.o rpmtagnames.o \
        cpio_wr.o md5.o version.o
 
@@ -16,12 +19,12 @@ distclean spotless: clean
 install: install.bin install.man
 
 install.bin: xrpm makepkg
-	@INSTALL_DIR@ @prefix@/bin
-	@INSTALL_PROGRAM@ makepkg xrpm @prefix@/bin
+	@INSTALL_DIR@ $(BINDIR)
+	@INSTALL_PROGRAM@ makepkg xrpm $(BINDIR)
 
 install.man:
-	@INSTALL_DIR@ @prefix@/man/man1
-	@INSTALL_DATA@ makepkg.1 @prefix@/man/man1
+	@INSTALL_DIR@ $(MANDIR)/man1
+	@INSTALL_DATA@ makepkg.1 $(MANDIR)/man1
 
 xrpm.a:	$(LIBOBJ)
 	ar crv xrpm.a $(LIBOBJ)

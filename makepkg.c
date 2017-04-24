@@ -86,6 +86,7 @@ static int iscached = 0;
  * the [BUILD] section, if any
  */
 static char *build;
+static char *build_root = "~/rpmbuild";
 
 /*
  * package sections
@@ -815,8 +816,8 @@ makeheader(int f, struct info *info, size_t *checksum_at)
     rpm_write(f, ino, ntohl(sb.nritems) * sizeof ino[0]);
     rpm_write(f, data, ntohl(sb.size));
     if (verbose)
-	fprintf(stderr, "header: %ld bytes\n",
-	    sizeof sb + (ntohl(sb.nritems) * sizeof ino[0]) + ntohl(sb.size));
+	fprintf(stderr, "header: %d bytes\n",
+			sizeof sb + (ntohl(sb.nritems) * sizeof ino[0]) + ntohl(sb.size));
 } /* makeheader */
 
 
@@ -860,14 +861,13 @@ writepayload(int f, struct info *info)
 	if (status == 0) /* need to copy the file contents */ {
 	    if ((fd = open(info->file[x].name, O_RDONLY)) != EOF) {
 
-		if (verbose) {
+		if (verbose)
 		    if (strcmp(info->file[x].name, info->file[x].dest) != 0)
 			fprintf(stderr, "packaging %s as %s\n",
 				info->file[x].name, info->file[x].dest);
 		    else
 			fprintf(stderr, "packaging %s\n",
 				info->file[x].dest);
-		}
 
 		while ((sz = read(fd, blk, sizeof blk)) > 0)
 		    push(io[1], blk, sz);
@@ -942,13 +942,13 @@ which_os_am_I(struct info *info)
  * commandline options
  */
 struct x_option options[] = {
-    { 'v', 'v', "verbose",   0, "Be chattery while we're making the package" },
-    { 'h', 'h', "help",      0, "Give this message" },
-    { 'V', 'V', "version",   0, "Give the current version number, then exit" },
-    { 'o', 'o', "show-os",   0, "Show the supported operating systems" },
-    { 'a', 'a', "show-arch", 0, "Show the supported computer architectures" },
-    { 'b', 'b', "build",     0, "Execute the [BUILD] section, if it exists" },
-    { 'w', 'w', "write", "FILE","Write the rpm to FILE" },
+    { 'v', 'v', "verbose",   0,    "Be chattery while we're making the package" },
+    { 'h', 'h', "help",      0,    "Give this message" },
+    { 'V', 'V', "version",   0,    "Give the current version number, then exit" },
+    { 'o', 'o', "show-os",   0,    "Show the supported operating systems" },
+    { 'a', 'a', "show-arch", 0,    "Show the supported computer architectures" },
+    { 'b', 'b', "build",     0,    "Execute the [BUILD] section, if it exists" },
+    { 'w', 'w', "write",    "FILE","Write the rpm to FILE" },
 } ;
 #  define NROPTIONS	(sizeof options / sizeof options[0])
 #  define GETOPT(ac,av)	x_getopt(ac,av,NROPTIONS,options)
@@ -968,12 +968,11 @@ showmaps(struct mapping *map, int nrmap, char* desc)
     printf("\n%s\n", desc);
 
     for (ix = 0; ix < nrmap; ix++) {
-	if (val != map[ix].number) {
+	if (val != map[ix].number)
 	    if (map[ix].desc)
 		printf("\n%s:", map[ix].desc);
 	    else
 		putchar('\n');
-	}
 	printf(" %s", map[ix].name);
 	val = map[ix].number;
     }
@@ -1139,14 +1138,13 @@ main(int argc, char **argv)
     /* populate destination file names */
     for (x = 0; x < info.nrfile; x++) {
 	needtomove |= info.file[x].tobemoved;
-	if (info.file[x].dest == 0) {
+	if (info.file[x].dest == 0)
 	    if (info.prefix) {
 		info.file[x].dest = malloc(strlen(info.prefix) + strlen(info.file[x].name) + 2);
 		sprintf(info.file[x].dest, "%s/%s", info.prefix, info.file[x].name);
 	    }
 	    else
 		info.file[x].dest = info.file[x].name;
-	}
     }
 
 
