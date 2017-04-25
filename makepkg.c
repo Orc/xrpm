@@ -684,7 +684,12 @@ write_rpm_header(int f, struct info *info)
 
     hdr.archnum = htons(info->arch_k);
     hdr.osnum = htons(info->os_k);
-    snprintf(hdr.name, sizeof hdr.name, "%s-%s", info->name, info->version);
+    
+    if ( info->release )
+	snprintf(hdr.name, sizeof hdr.name, "%s-%s.%s", info->name, info->version, info->release);
+    else
+	snprintf(hdr.name, sizeof hdr.name, "%s-%s", info->name, info->version);
+    
     hdr.signature_type = htons(5);	/* signature block */
     write(f, &hdr, sizeof hdr);
 } /* write_rpm_header */
@@ -693,11 +698,12 @@ write_rpm_header(int f, struct info *info)
 /*
  * finally, the procedure that generates & writes the payload header
  */
-void
+int
 write_payload_header(int f, struct info *info)
 {
     char scratch[200];
     int x;
+    int size = 0;
     time_t now;
 
     /* allocate the parts of the header */
@@ -805,13 +811,14 @@ write_payload_header(int f, struct info *info)
     sb.nritems = htonl(sb.nritems);
     sb.size = htonl(sb.size);
 
-    rpm_write(f, &sb_magic, sizeof sb_magic);
-    rpm_write(f, &sb, sizeof sb);
-    rpm_write(f, ino, ntohl(sb.nritems) * sizeof ino[0]);
-    rpm_write(f, data, ntohl(sb.size));
+    size += rpm_write(f, &sb_magic, sizeof sb_magic);
+    size += rpm_write(f, &sb, sizeof sb);
+    size += rpm_write(f, ino, ntohl(sb.nritems) * sizeof ino[0]);
+    size += rpm_write(f, data, ntohl(sb.size));
     if (verbose)
-	fprintf(stderr, "header: %ld bytes\n",
-		    (long)(sizeof sb + (ntohl(sb.nritems) * sizeof ino[0]) + ntohl(sb.size)));
+	fprintf(stderr, "header: %ld bytes\n", size);
+
+    return size;
 } /* makeheader */
 
 
@@ -1180,14 +1187,13 @@ main(int argc, char **argv)
 
     catch_sigs();
 	
+    
     write_rpm_header(f, &info);
     offset_to_checksum = tell(f);
     write_checksum(f, 0, 0, "0123456789ABCDEF", &info);	/* dummy checksum segment */
     
     MD5_Init(&checksum);
-    header_size = tell(f);
-    write_payload_header(f, &info);
-    header_size = tell(f)-header_size;
+    header_size = write_payload_header(f, &info);
     write_payload(f, &info);
     MD5_Final(md5sum, &checksum);
 
