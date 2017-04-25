@@ -551,10 +551,8 @@ main(int argc, char ** argv)
     }
 
 
-    sz = read(0, &hdr, sizeof hdr);
-
-    if ((sz != sizeof hdr)) {
-	perror("Reading file header");
+    if ( (sz=read(0, &hdr, sizeof hdr)) < sizeof hdr) {
+	fprintf(stderr, "This file is too short to be a rpm file\n");
 	exit(1);
     }
 
