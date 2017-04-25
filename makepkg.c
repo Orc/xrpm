@@ -49,6 +49,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <unistd.h>
 #include <time.h>
 #include <signal.h>
 
@@ -1094,9 +1095,18 @@ main(int argc, char **argv)
 	int rc;
 
 	if ( (runner = fork()) == 0 ) {
+#if HAVE_GETCWD
+	    char buildroot[2048];
+	    char *cwd = getcwd(buildroot, sizeof buildroot);
+#else
+	    char *cwd = getenv("PWD");
+#endif
+
+	    if ( cwd && !getenv("BUILDROOT") )
+		setenv("BUILDROOT", cwd, 1);
+	    
 	    close(1);
 	    dup2(2, 1);
-	    setenv("BUILDROOT", getwd(0), 1);
 	    execl("/bin/sh", "sh", "-c", build, 0);
 	}
 	else if ( runner > 0 ) {

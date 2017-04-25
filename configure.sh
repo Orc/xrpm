@@ -47,6 +47,7 @@ AC_CHECK_FUNCS	tell || AC_DEFINE 'tell(x)' 'lseek(x,0,SEEK_CUR)'
 AC_SCALAR_TYPES
 
 AC_CHECK_FUNCS mkstemp
+AC_CHECK_FUNCS getcwd	# so makepkg can set BUILDROOT without depending on parent $PWD
 
 AC_SUB VERSION `cat VERSION`
 
