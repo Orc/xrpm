@@ -40,14 +40,29 @@ runtest() {
 	
 	local uuencoded
 	local options=''
+	local prerequisite=''
+	local done=''
 	
 	read file
 
-	case X"$file" in
-	X-*)options=$file
-	    read file ;;
-	esac
+	while [ ! "$done" ]; do
+	    case X"$file" in
+	    X-*)options=$file
+		read file ;;
+	    X:*)prerequisite=`echo $file | sed -e 's/^://'`
+		read file ;;
+	    X#*)comment=" (`echo $file | sed -e 's/^#//'`)"
+		read file ;;
+	    *)  done=T ;;
+	    esac
+	done
 
+	if [ "$prerequisite" ]; then
+	    if ! which $prerequisite 2>/dev/null >/dev/null ; then
+		echo "${file}: missing $prerequisite, so not tested"
+		return 0
+	    fi
+	fi
 
 	rm -rf test$$
 	mkdir test$$
@@ -60,7 +75,7 @@ runtest() {
 	rm -rf test$$
 	
 	if [ "$res" -eq 0 ]; then
-	    echo "${file}: ok"
+	    echo "${file}${comment}: ok"
 	fi
 	return $res
     ) < $x
