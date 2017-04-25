@@ -671,10 +671,10 @@ write_checksum(int f, size_t total, size_t payload, unsigned char *md5sum, struc
 
 
 /*
- * write_package_header() writes the package header for the whole shebang
+ * write_rpm_header() writes the package header for the whole shebang
  */
 void
-write_package_header(int f, struct info *info)
+write_rpm_header(int f, struct info *info)
 {
     memset(&hdr, 0, sizeof hdr);
     hdr.magic = MAGIC;
@@ -687,7 +687,7 @@ write_package_header(int f, struct info *info)
     snprintf(hdr.name, sizeof hdr.name, "%s-%s", info->name, info->version);
     hdr.signature_type = htons(5);	/* signature block */
     write(f, &hdr, sizeof hdr);
-} /* write_package_header */
+} /* write_rpm_header */
 
 
 /*
@@ -810,8 +810,8 @@ write_payload_header(int f, struct info *info)
     rpm_write(f, ino, ntohl(sb.nritems) * sizeof ino[0]);
     rpm_write(f, data, ntohl(sb.size));
     if (verbose)
-	fprintf(stderr, "header: %d bytes\n",
-			sizeof sb + (ntohl(sb.nritems) * sizeof ino[0]) + ntohl(sb.size));
+	fprintf(stderr, "header: %ld bytes\n",
+		    (long)(sizeof sb + (ntohl(sb.nritems) * sizeof ino[0]) + ntohl(sb.size)));
 } /* makeheader */
 
 
@@ -1181,7 +1181,7 @@ main(int argc, char **argv)
     catch_sigs();
 	
     MD5_Init(&checksum);
-    write_package_header(f, &info);
+    write_rpm_header(f, &info);
     offset_to_checksum = tell(f);
     write_checksum(f, 0, 0, "0123456789ABCDEF", &info);
     header_size = tell(f);

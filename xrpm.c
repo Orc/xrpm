@@ -153,6 +153,55 @@ free_info_header(struct rpm_info_header *p)
 
 
 /*
+ * dumpheaderblock() cats a header block to stdout
+ */
+void
+dumpheaderblock(struct rpm_header *pkg, int fd, struct rpm_info_header *sb)
+{
+    size_t start = tell(fd);
+    BYTE magic[8];
+    struct rpm_super superblock;
+    int nritems, size, sz;
+    struct rpm_info *ino;
+    BYTE *data;
+    
+    if ( pkg->major >= 3 ) {
+	sz = read(fd, magic, 8);
+	if ( sz == 8 )
+	    write(1, magic, 8);
+	else {
+	    perror("magic");
+	    exit(2);
+	}
+    }
+    
+    if ((sz = read(fd, &superblock, sizeof superblock)) != sizeof superblock) {
+	perror("headerheader");
+	exit(2);
+    }
+    write(1, &superblock, sizeof superblock);
+    nritems = ntohl(superblock.nritems);
+    size    = ntohl(superblock.size);
+    
+    sz = nritems * sizeof ino[0];
+    if ( (ino = malloc(sz)) == 0 || read(fd, ino, sz) != sz ) {
+	perror("read header directory");
+	exit(2);
+    }
+    write(1, ino, size);
+    
+    if ( (data = malloc(size)) == 0 || read(fd, data, size) != size ) {
+	perror("read header data");
+	exit(2);
+    }
+    write(1, data, sz);
+    free(ino);
+    free(data);
+    lseek(fd, start, SEEK_SET);
+} /* dumpheaderblock */
+ 
+ 
+/*
  * readheaderblock() reads a header segment
  */
 void
@@ -202,6 +251,7 @@ readheaderblock(struct rpm_header* pkg, int fd, struct rpm_info_header *sb)
 	sb->ino[i].count = ntohl(sb->ino[i].count);
 	sb->ino[i].offset = ntohl(sb->ino[i].offset);
     }
+
 
     /* read the data block */
     sb->data = malloc(sb->super.size);
@@ -272,7 +322,7 @@ display_field(struct rpm_info *inode, BYTE *data, char *iname, int inum)
 		    data += 4;
 		    break;
 	case RI_64BIT:
-		    printf("%d: %lu %lu\n", i, ntohl(*((DWORD*)data)), ntohl(*((DWORD*)(data+4))));
+		    printf("%d: %u %u\n", i, ntohl(*((DWORD*)data)), ntohl(*((DWORD*)(data+4))));
 		    data += 8;
 		    break;
 	case RI_STRING:
@@ -323,8 +373,8 @@ displayheaderblock(struct rpm_info_header *sb,
     if (field_to_display == 0) {
 	printf("header\n"
 	       "------\n"
-	       "nritems:   %ld\n"
-	       "data size: %lu\n", sb->super.nritems, sb->super.size);
+	       "nritems:   %d\n"
+	       "data size: %u\n", sb->super.nritems, sb->super.size);
 	puts("----");
     }
 
@@ -406,6 +456,7 @@ struct x_option options[] = {
 					"are compressed cpio files, so you'll\n"
 					"need to decompress the file before\n"
 					"you can do anything with it." },
+    { 'D', 'D', "dump-header",  0,	"dump the payload header block" },
     { 'x',	'x', "extract",	0,	"Extract the contents of the archive" },
     { 'h',	'h', "help",	0,	"Show the valid options for xrpm" },
     { 'V',	'V', "version",	0,	"Show the program version, then quit" },
@@ -438,6 +489,7 @@ main(int argc, char ** argv)
     int show_database = 0;
     int list_archive = 0;
     int dump_archive = 0;
+    int dump_header = 0;
     int extract_archive = 0;
 
     char* field_to_display = (char*)0;
@@ -465,6 +517,8 @@ main(int argc, char ** argv)
 	case 't':   list_archive = 1;
 		    break;
 	case 'd':   dump_archive = 1;
+		    break;
+	case 'D':   dump_header = 1;
 		    break;
 	case 'b':   build_root = OPTARG;
 		    break;
@@ -505,7 +559,7 @@ main(int argc, char ** argv)
     }
 
     if (hdr.magic != MAGIC) {
-	printf("Not a rpm file (magic %lx vs %lx)\n", hdr.magic, MAGIC);
+	printf("Not a rpm file (magic %x vs %x)\n", hdr.magic, MAGIC);
 	exit(1);
     }
 
@@ -546,6 +600,9 @@ main(int argc, char ** argv)
 	    fprintf(stderr, "I don't know about signature type %d\n", ntohs(hdr.signature_type));
 	    exit(2);
     }
+
+    if ( dump_header )
+	dumpheaderblock(&hdr, 0, &db);
 
     readheaderblock(&hdr, 0, &db);
 
