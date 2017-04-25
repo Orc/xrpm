@@ -1180,10 +1180,11 @@ main(int argc, char **argv)
 
     catch_sigs();
 	
-    MD5_Init(&checksum);
     write_rpm_header(f, &info);
     offset_to_checksum = tell(f);
-    write_checksum(f, 0, 0, "0123456789ABCDEF", &info);
+    write_checksum(f, 0, 0, "0123456789ABCDEF", &info);	/* dummy checksum segment */
+    
+    MD5_Init(&checksum);
     header_size = tell(f);
     write_payload_header(f, &info);
     header_size = tell(f)-header_size;

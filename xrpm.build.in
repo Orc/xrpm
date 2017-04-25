@@ -7,7 +7,6 @@
     SUMMARY="RPM generation/extraction tools"
     URL="http://www.pell.portland.or.us/~orc/Code/xrpm"
     COPYRIGHT="BSD"
-    ARCH=Eniac
 
 [description]
 
