@@ -649,13 +649,13 @@ add32bit(short tag, unsigned long value)
  * write_checksum() writes the checksum block
  */
 void
-write_checksum(int f, size_t total, size_t payload, unsigned char *md5sum, struct info *info)
+write_checksum(int f, size_t header, size_t payload, unsigned char *md5sum, struct info *info)
 {
     int i;
 
     memset(&sb, 0, sizeof sb);
     
-    add32bit(1000, total);
+    add32bit(1000, header+payload);
     add32bit(1007, payload);
     addbinary(1004,md5sum,16);
 
@@ -675,7 +675,7 @@ write_checksum(int f, size_t total, size_t payload, unsigned char *md5sum, struc
  * write_rpm_header() writes the package header for the whole shebang
  */
 void
-write_rpm_header(int f, struct info *info)
+write_rpm_header(int f, struct info *info, int sign)
 {
     memset(&hdr, 0, sizeof hdr);
     hdr.magic = MAGIC;
@@ -691,7 +691,7 @@ write_rpm_header(int f, struct info *info)
     else
 	snprintf(hdr.name, sizeof hdr.name, "%s-%s", info->name, info->version);
     
-    hdr.signature_type = htons(5);	/* signature block */
+    hdr.signature_type = sign ? htons(5) : 0;	/* signature block or nothing */
     write(f, &hdr, sizeof hdr);
 } /* write_rpm_header */
 
@@ -950,6 +950,7 @@ struct x_option options[] = {
     { 'o', 'o', "show-os",   0,    "Show the supported operating systems" },
     { 'a', 'a', "show-arch", 0,    "Show the supported computer architectures" },
     { 'b', 'b', "build",     0,    "Execute the [BUILD] section, if it exists" },
+    { 'u', 'u', "unsigned",  0,    "Don't sign or checksum this package" },
     { 'w', 'w', "write",    "FILE","Write the rpm to FILE" },
 } ;
 #  define NROPTIONS	(sizeof options / sizeof options[0])
@@ -994,6 +995,7 @@ main(int argc, char **argv)
     int showarch=0;
     int showos=0;
     int build_it=0;
+    int sign=1;
     int sectionid;
     char *missing = 0;
     int opt;
@@ -1026,7 +1028,11 @@ main(int argc, char **argv)
 		build_it++;
 		break;
 		
-	case 'w':
+	case 'u':
+		sign = 0;
+		break;
+	
+    case 'w':
 		output = OPTARG;
 		break;
 
@@ -1198,9 +1204,11 @@ main(int argc, char **argv)
     catch_sigs();
 	
     
-    write_rpm_header(f, &info);
-    offset_to_checksum = tell(f);
-    write_checksum(f, 0, 0, "0123456789ABCDEF", &info);	/* dummy checksum segment */
+    write_rpm_header(f, &info, sign);
+    if ( sign ) {
+	offset_to_checksum = tell(f);
+	write_checksum(f, 0, 0, "0123456789ABCDEF", &info);
+    }
     
     MD5_Init(&checksum);
     header_size = write_payload_header(f, &info);
@@ -1213,7 +1221,8 @@ main(int argc, char **argv)
     size_of_package = tell(f);
     lseek(f, offset_to_checksum, SEEK_SET);
 
-    write_checksum(f, header_size+cur_archive_pos, cur_archive_pos, md5sum, &info);
+    if  ( sign )
+	write_checksum(f, header_size, cur_archive_pos, md5sum, &info);
 
     if ( output ) {
 	close(f);

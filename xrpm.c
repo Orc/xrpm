@@ -86,6 +86,7 @@ char* pkgsig[] = {
 /* Flags
  */
 int quieter = 0;
+char *this_file = "This file";
 
 
 /*
@@ -541,7 +542,7 @@ main(int argc, char ** argv)
 	}
     }
 
-    if ((argc > OPTIND) && freopen(argv[OPTIND], "r", stdin) == 0) {
+    if ((argc > OPTIND) && freopen(this_file = argv[OPTIND], "r", stdin) == 0) {
 	perror(argv[OPTIND]);
 	exit(2);
     }
@@ -552,18 +553,18 @@ main(int argc, char ** argv)
 
 
     if ( (sz=read(0, &hdr, sizeof hdr)) < sizeof hdr) {
-	fprintf(stderr, "This file is too short to be a rpm file\n");
+	fprintf(stderr, "%s is too short to be a rpm file.\n", this_file);
 	exit(1);
     }
 
     if (hdr.magic != MAGIC) {
-	printf("Not a rpm file (magic %x vs %x)\n", hdr.magic, MAGIC);
+	printf("%s is not a rpm file (magic %x vs %x)\n", hdr.magic, MAGIC, this_file);
 	exit(1);
     }
 
-    if (hdr.major < MAJOR) {
-	printf("Not the right version of rpm file (wanted %d, got %d)\n",
-		MAJOR, hdr.major);
+    if (hdr.major < MIN_MAJOR) {
+	printf("%s is too old to process (rpm v%d -- we need at least rpm v%d)\n",
+		this_file, MIN_MAJOR, hdr.major);
 	exit(1);
     }
     switch (ntohs(hdr.signature_type)) {

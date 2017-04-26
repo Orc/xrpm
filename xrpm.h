@@ -43,7 +43,7 @@
 /*  This header is from the documentation for rpm 2.2.6.  It will
  *  probably not work with any other version of rpm.
  */
-#define MAJOR		2
+#define MIN_MAJOR	2
 #define MAGIC		(DWORD)0xDBEEABED
 
 #define HDR_MAGIC	(DWORD)0x01E8AD8E
