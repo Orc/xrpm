@@ -42,6 +42,7 @@ else
 fi
 
 AC_CHECK_HEADERS errno.h
+AC_HEADER_SYS_WAIT
 test "$OS_FREEBSD" || AC_CHECK_HEADERS malloc.h
 AC_CHECK_FUNCS	tell || AC_DEFINE 'tell(x)' 'lseek(x,0,SEEK_CUR)'
 AC_SCALAR_TYPES
